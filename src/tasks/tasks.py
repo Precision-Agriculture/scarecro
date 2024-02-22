@@ -1,9 +1,11 @@
+#Might kill this guy! 
+
 class Task:
     """
     This is the task super class. 
     Tasks may import most other modules (as well as other tasks)
     to run period system functionality. Sub classes may
-    add functionality. 
+    add functionality.
     """
     def __init__(self):
         """
