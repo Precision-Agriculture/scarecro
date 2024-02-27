@@ -1,36 +1,140 @@
+import sys
+import time 
+sys.path.append("../scarecro")
+import system_object
+import util.util as util 
+import logging 
+
+
 class Fake():
-    def __init__(self, config, addresses, message_definitions):
+    def __init__(self, config, send_addresses, receive_addresses, message_configs):
         self.name = config.get("name", None)
-        self.addresses = addresses 
-        self.message_definitions = message_definitions
+        self.send_addresses = send_addresses 
+        self.receive_addresses = receive_addresses
+        self.message_configs = message_configs
+        print("I'm init'ing")
         #Make a table mapping messages to addresses?  
+
+
+    def return_message_type_matching_address(self):
+        pass 
+
+    def get_address_matching_message(self):
+        pass 
 
     #Splitting of message types will actually be up to 
     #The system logic  - might need to make that a param,
     #actually, when it comes to dealing with shared objects. 
-    def receive(msg_types):
-        #TODO: Have this actually generate the time, please  
-        spoofed_message_content = {
-            "id": "fake_id",
-            "time": "now",
-            "place": "here",
-            "person": "you!" 
-        }
+
+
+    def envelope_spoofed_message(self, id_val, time, content):
         spoofed_message = {
             "msg_type": "test_message",
-            "msg_id": "fake_id",
-            "msg_time": spoofed_message_content["time"],
-            "carrier_name": self.name,
-            "msg_content": spoofed_message_content 
+            "msg_id": id_val,
+            "msg_time": time,
+            "msg_content": content 
+        } 
+        return spoofed_message.copy()
+
+
+    def get_spoofed_message(self, id_val=1, duration="interval"):
+        spoofed_message_content = {
+            "id": duration,
+            "time": util.get_today_date_time_local(),
+            "place": "here",
+            "person": "you!",
+            "duration": duration 
         }
-        #Don't return anything - add it to the system message table
+        message = self.envelope_spoofed_message(spoofed_message_content["id"], spoofed_message_content["time"], spoofed_message_content)
+        return message
 
-    def send(message_type, messages, address_name):
+    def receive(self, address_names):
+        """
+        Receives a list of addresses (all with same duration). Depending 
+        on the duration and the address, it sets itself
+        up to 'receive' spoofed messages and post them
+        to the system post office along with an address 
+        """
+        first_address = address_names[0]
+        address_def = self.receive_addresses.get(first_address, {})
+        duration = address_def.get("duration", "as_needed")
+        if str(duration).isnumeric():
+            spoofed_message = self.get_spoofed_message(duration=duration)
+            print("Receiving a message on an interval")
+            system_object.system.post_messages(spoofed_message, address_names[0])
+            system_object.system.print_message_entries_dict()
+
+        elif duration == "as_needed":
+            spoofed_message = self.get_spoofed_message(duration=duration)
+            print("Receiving a message as needed")
+            system_object.system.post_messages(spoofed_message, address_names[0])
+            system_object.system.print_message_entries_dict()
+
+        elif duration == "on_message":
+            spoofed_message = self.get_spoofed_message(duration=duration)
+            print("Receiving a message, because we received another message ")
+            system_object.system.post_messages(spoofed_message, address_names[0])
+            system_object.system.print_message_entries_dict()
+
+        elif duration == "always":
+            print("Creating a forever listener")
+            spoofed_message = self.get_spoofed_message(duration=duration)
+            #Have us wait forever, but receive a message every 20 seconds
+            prev = time.time()
+            curr = time.time()
+            while True:
+                if curr - prev > 20:
+                    prev = curr
+                    print("Receiving a message, from a forever listener")
+                    system_object.system.post_messages(spoofed_message, address_names[0])
+                    system_object.system.print_message_entries_dict()
+                curr = time.time()
+
+
+    def spoof_message_send(self,messages):
+        print("SPOOF SENDING")
+        print(f"Sending {len(messages)} messages")
+        for message in messages:
+            print(message)
+
+
+    def send(self, address_names, entry_ids=[]):
         #Going to get the message type from the system message table. 
+        first_address = address_names[0]
+        address_def = self.send_addresses.get(first_address, {})
+        duration = address_def.get("duration", "as_needed")
+        if str(duration).isnumeric():
+            print("Sending a message on an interval")
+            messages = system_object.system.pickup_messages(address_names[0], entry_ids=entry_ids)
+            self.spoof_message_send(messages)
 
-        pass 
+        elif duration == "as_needed":
+            print("Sending a message as needed")
+            messages = system_object.system.pickup_messages(address_names[0], entry_ids=entry_ids)
+            self.spoof_message_send(messages)
+
+        elif duration == "on_message":
+            print("Sending a message, because we received a message ")
+            messages =system_object.system.pickup_messages(address_names[0], entry_ids=entry_ids)
+            self.spoof_message_send(messages)
+
+        elif duration == "always":
+            print("Sending on a forever sender")
+            #Have us wait forever, but receive a message every 20 seconds
+            prev = time.time()
+            curr = time.time()
+            while True:
+                if curr - prev > 20:
+                    prev = curr
+                    print("Send a message, from a forever sender")
+                    messages = system_object.system.pickup_messages(address_names[0], entry_ids=entry_ids)
+                    self.spoof_message_send(messages)
+                curr = time.time()
+
 
     
+def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
+    return Fake(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
 
 
 

@@ -2,7 +2,7 @@
 Handlers handle incoming and outgoing messages, including performing additional processing as necessary. 
 
 Handler configurations should point to the handler source code they reference ,
-"handler_source"
+"source" -- 
 
 
 Handlers should have:

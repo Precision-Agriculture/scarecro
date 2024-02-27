@@ -10,7 +10,7 @@ address = {
 
     "handler_function": the function in the processing object that will receive the message for processing as its argument. 
 
-    "send_or_recieve": "send" or "recieve", indicating whether the is the receiving address for a message or the sending addresses for a message
+    "send_or_receive": "send" or "recieve", indicating whether the is the receiving address for a message or the sending addresses for a message
 
     "carrier": The object that will send or receive the message.
 

@@ -5,6 +5,9 @@ address = {
     "handler_function": "process",
     "send_or_receive": "receive",
     "carrier": "fake_message_listener",
-    "duration": 30,
+    "duration": 10,
+    #"duration": "always",
+    #"duration": "as_needed",
+    #"duration": "on_message",
 }
 
