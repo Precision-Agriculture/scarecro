@@ -846,8 +846,8 @@ class System:
                     "duration": duration
                 }
             scheduler_dict[job_id] = new_job_dict
-            self.scheduler_dict = scheduler_dict
-            self.on_message_routing_dict = on_message_routing_dict
+        self.scheduler_dict = scheduler_dict
+        self.on_message_routing_dict = on_message_routing_dict
 
 
     def print_scheduler_dict(self):

@@ -2,17 +2,19 @@
 
 SCARECRO Post is an IoT model with configurable message transmission elements. In particular, you can configure:
 
-* The type of carrier:
-Analogy: mail truck, mail person, mail plane, etc. 
-Technology: MQTT, HTTP, S3, etc.
-
 * The type of message
 Analogy: birthday card, bill payment, pizza coupon
 Technology: sensor reading, API data, form entry
 
+* The type of carrier:
+Analogy: mail truck, mail person, mail plane, etc. 
+Technology: MQTT, HTTP, S3, etc.
+
+
 * The type of address:
 Analogy: House mailbox, business mailbox
 Technology: Database, Mobile App 
+
 
 * The type of handler 
 Analogy: Person writing to pen pal, business creating marketing campaign
