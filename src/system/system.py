@@ -1,11 +1,13 @@
 import sys
-sys.path.append("../scarecro")
+
 import importlib 
 import json 
 import logging 
 import threading 
 from apscheduler.schedulers.background import BackgroundScheduler
 import apscheduler.events
+sys.path.append("../scarecro")
+import util.util as util 
 
 class System: 
     def __init__(self, system_config=None):
@@ -84,11 +86,11 @@ class System:
         self.handlers = self.map_addresses(self.handlers, self.addresses, "handler")
         for handler in self.handlers.keys():
             self.handlers[handler]["content"] = self.import_config("handlers", handler, "handler")
+
         #Get carrier configs 
         self.carriers = self.map_addresses(self.carriers, self.addresses, "carrier")
         for carrier in self.carriers.keys():
             self.carriers[carrier]["content"] = self.import_config("carriers", carrier, "carrier")
-
         #Get task configs 
         for task in active_tasks:
             task_content = self.import_config("tasks", task, "task")
@@ -249,10 +251,11 @@ class System:
         for address_name, address_val in addresses.items():
             content_key = address_val.get(address_key)
             #If that doesn't exist in the content dict, add it
-            if content_dict.get(content_key, None) == None:
-                content_dict[content_key] = self.return_default_mapping_dict()
+            if content_key != None:
+                if content_dict.get(content_key, None) == None:
+                    content_dict[content_key] = self.return_default_mapping_dict()
             #Append this address to this content's address fields
-            content_dict[content_key]["addresses"].append(address_name)
+                content_dict[content_key]["addresses"].append(address_name)
         return content_dict
 
     def print_configs(self, config_types):
@@ -389,9 +392,9 @@ class System:
                     carrier_function = job_config.get("function", None)
                     overall_function = getattr(carrier_object, carrier_function)
                     if carrier_function == "send":
-                        overall_function(arguments, entry_ids=entry_ids)
+                        overall_function(arguments, "on_message", entry_ids=entry_ids)
                     elif carrier_function == "receive":
-                        overall_function(arguments)
+                        overall_function(arguments, "on_message")
                     else:
                         #Like from a task 
                         overall_function(arguments)
@@ -475,6 +478,29 @@ class System:
             logging.error(f"Could not pick up message on address {address}", exc_info=True)
         return messages 
 
+
+    def envelope_message(self, message_content, address_name):
+        """
+        Takes in the message content (dict expected) and address name and envelopes the 
+        message
+        Could really do this on the system object level. 
+        """
+        #Get message type from address 
+        address_config = self.addresses.get(address_name, {})
+        message_type = address_config.get("message_type", "default")
+        #Get message id from message definition
+        message_config = self.messages.get(message_type, {}).get("content")
+        id_field = message_config.get("id_field", "id")
+        message_id = message_content.get(id_field)
+        time = util.get_today_date_time_utc()
+        #Envelope it 
+        enveloped_message = {
+            "msg_id": message_id,
+            "msg_time": time,
+            "msg_type": message_type,
+            "msg_content": message_content
+        }
+        return enveloped_message
 
 
     ################# System Table Object for messages ################
@@ -779,6 +805,7 @@ class System:
             "function": function to run
             "arguments": arguments the pass to the function, in a list
             "duration": How often the job should be run in seconds, or "always"
+            "type": "task" or "carrier", depending on which it is
         }
         The sub-dictionary above is part of a larger dictionary, indexed 
         by the job_id
@@ -817,12 +844,19 @@ class System:
                     "object": carrier_object,
                     "function": function,
                     "arguments": [address_name],
-                    "duration": duration
+                    "duration": duration,
+                    "type": "carrier"
                 }
                 scheduler_dict[job_id] = new_job_dict
             else:
                 #If we do, just append the addresses
                 job_dict["arguments"].append(address_name)
+        # #Small fix        
+        # for job_id, job_dict in scheduler_dict.items():
+        #     duration = job_dict.get("duration", "as_needed")
+        #     arguments = job_dict.get("arguments", [])
+        #     arguments = [arguments, duration]
+        #     job_dict["arguments"] = arguments
 
         #Next, going to schedule the tasks 
         for task_name, task_config in self.tasks.items():
@@ -843,7 +877,8 @@ class System:
                     "object": task_object,
                     "function": function,
                     "arguments": arguments,
-                    "duration": duration
+                    "duration": duration,
+                    "type": "task"
                 }
             scheduler_dict[job_id] = new_job_dict
         self.scheduler_dict = scheduler_dict
@@ -874,7 +909,10 @@ class System:
                 duration = job_config.get("duration", "as_needed")
                 job_object = job_config.get("object", None)
                 arguments = job_config.get("arguments", [])
-                arguments = [arguments]
+                if job_config.get("type", "task") == "carrier":
+                   arguments = [arguments, duration]
+                else:
+                    arguments = [arguments]
                 function = job_config.get("function", None)
                 #If its a seconds interval
                 if str(duration).isnumeric():

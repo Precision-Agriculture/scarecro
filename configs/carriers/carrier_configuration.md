@@ -13,7 +13,7 @@ init() - the initialization function, which takes in the configuration of the ca
 
 And, depending on functionality, have one or more of these functions 
 
-send() - a function that takes in a list of addresses (and an optional list of entry ids), grabs the messages corresponding to those addresses (optionally filtered by entry id), and sends them. 
+send() - a function that takes in a list of addresses, the duration, (and an optional list of entry ids), grabs the messages corresponding to those addresses (optionally filtered by entry id), and sends them. 
 
-receive() - a function that takes in the address(es) names, and is able to recieve the message(s) and package it before placing into the message table 
+receive() - a function that takes in the address(es) names, duration, and is able to recieve the message(s) and package it before placing into the message table 
 

@@ -48,16 +48,16 @@ class Fake():
         message = self.envelope_spoofed_message(spoofed_message_content["id"], spoofed_message_content["time"], spoofed_message_content)
         return message
 
-    def receive(self, address_names):
+    def receive(self, address_names, duration):
         """
         Receives a list of addresses (all with same duration). Depending 
         on the duration and the address, it sets itself
         up to 'receive' spoofed messages and post them
         to the system post office along with an address 
         """
-        first_address = address_names[0]
-        address_def = self.receive_addresses.get(first_address, {})
-        duration = address_def.get("duration", "as_needed")
+        #first_address = address_names[0]
+        #address_def = self.receive_addresses.get(first_address, {})
+        #duration = address_def.get("duration", "as_needed")
         if str(duration).isnumeric():
             spoofed_message = self.get_spoofed_message(duration=duration)
             print("Receiving a message on an interval")
@@ -98,11 +98,11 @@ class Fake():
             print(message)
 
 
-    def send(self, address_names, entry_ids=[]):
+    def send(self, address_names, duration, entry_ids=[]):
         #Going to get the message type from the system message table. 
-        first_address = address_names[0]
-        address_def = self.send_addresses.get(first_address, {})
-        duration = address_def.get("duration", "as_needed")
+        #first_address = address_names[0]
+        #address_def = self.send_addresses.get(first_address, {})
+        #duration = address_def.get("duration", "as_needed")
         if str(duration).isnumeric():
             print("Sending a message on an interval")
             messages = system_object.system.pickup_messages(address_names[0], entry_ids=entry_ids)

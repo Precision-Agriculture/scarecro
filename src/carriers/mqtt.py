@@ -6,7 +6,6 @@ import paho.mqtt.client as paho
 from paho import mqtt
 sys.path.append("../scarecro")
 import system_object
-import util.util as util 
 #Help from the documentation here: https://www.eclipse.org/paho/index.php?page=clients/python/docs/index.php#multiple
 
 
@@ -46,7 +45,9 @@ class MQTT_Client():
         #Set up client
         self.client.on_connect = self.on_connect
         self.topic_address_mappings()
-        self.sent_entries = []
+        self.sent_entries = {}
+        self.loop_forever = False
+        self.loop_start=False
         #Set up message definitions for looking up messages 
 
 
@@ -58,13 +59,9 @@ class MQTT_Client():
         """
         topic_address_mapping = {}
         address_topic_mapping = {} 
-
-        for address_name, address_config in self.receive_addresses.items():
-            additional_info = address_config.get("additional_info", {})
-            topic = additional_info.get("topic", None)
-            topic_address_mapping[topic] = address_name
-            address_topic_mapping[address_name] = topic
-        for address_name, address_config in self.send_addresses.items():
+        all_addresses = {**self.send_addresses, **self.receive_addresses}
+        #For every address, map it to a topic and vice versa 
+        for address_name, address_config in all_addresses.items():
             additional_info = address_config.get("additional_info", {})
             topic = additional_info.get("topic", None)
             topic_address_mapping[topic] = address_name
@@ -72,79 +69,57 @@ class MQTT_Client():
         self.topic_address_mapping = topic_address_mapping
         self.address_topic_mapping = address_topic_mapping
 
-    def envelope_message(self, message, address_name):
-        """
-        Takes in the message and address name and envelopes the 
-        message
-        Could really do this on the system object level. 
-        """
-        #Get message type from address 
-        address_config = self.receive_addresses.get(address_name, {})
-        message_type = address_config.get("message_type", "default")
-        #Get message id from message definition
-        message_config = self.message_configs.get(message_type, {})
-        #Debug
-        print("Message config", message_config)
-        id_field = message_config.get("id_field", "id")
-        message_id = message.get(id_field)
-        time = util.get_today_date_time_utc()
-        #Envelope it 
-        enveloped_message = {
-            "msg_id": message_id,
-            "msg_time": time,
-            "msg_type": message_type,
-            "msg_content": message
-        }
-        return enveloped_message
-        
-
     def receive_message(self, client, userdata, message):
         """
         Takes in client, userdata, and message
         Follows the paho function footprint for receiving a message
         Each subscription gets it's own instance of this callback. 
         """
-        print("Receive callback")
         #Get the topic
         topic_name = message.topic
         #Debug for now
-        print(topic_name)
+        logging.debug(f"Got message {json.loads(message.payload)} on topic {message.topic}")
         #Map it to an address
         address_name = self.topic_address_mapping.get(topic_name, None)
         if address_name:
             #Post it
-            #Debug
-            print(json.loads(message.payload))
-            enveloped_message = self.envelope_message(json.loads(message.payload), address_name)
+            enveloped_message = system_object.system.envelope_message(json.loads(message.payload), address_name)
             system_object.system.post_messages(enveloped_message, address_name)
-            #Also a debug        
-            system_object.system.print_message_entries_dict()
+            #logging.debug(system_object.system.print_message_entries_dict())
 
 
     def get_subscriptions(self, addresses):
         """
-        Get the list of all relevant subscriptions 
+        Takes in addresses
+        Get the list of all relevant subscriptions topics
+        based on the addresses, topic/mapping dict 
         """
         subscriptions = []
         for address_name in addresses:
-            address_config = self.receive_addresses.get(address_name, {})
-            mqtt_config = address_config.get("additional_info", {})
-            topic = mqtt_config.get("topic", None)
-            subscriptions.append(topic)
+            subscriptions.append(self.address_topic_mapping.get(address_name, None))
         return subscriptions
 
      #Connects to the broker. 
-    def connect(self):
+    def connect(self, reconnect=False):
+        """
+        Takes an optional reconnect argument, defaults to False 
+        If already connected and we , it disconnects and reconnects to the broker. 
+        """
         try:
             if self.client.is_connected():
-                self.disconnect_from_broker()
-            self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
+                #If we want to reconnect 
+                if reconnect:
+                    self.disconnect_from_broker()
+                    self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
+            else:
+                self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
         except Exception as e:
             logging.error(f'Could not connect client {self.client_id}', exc_info=True)
 
     def on_connect(self, client, userdata, flags, reasonCode, properties=None):
         """
-        On the connection, subscribe to all relevant subscriptions 
+        On the connection, subscribe to all relevant subscriptions already identified 
+        for the client 
         """
         if reasonCode==0:
             if userdata != []:
@@ -163,55 +138,35 @@ class MQTT_Client():
         """
         try:
             self.client.loop_stop()
+            self.loop_start = False
+            self.loop_forever = False
         except Exception as e:
             logging.error(f'{self.client_id} loop stop did not terminate', exc_info=True)
         #Add try/except here?
         self.client.disconnect()
 
-    def run(self):
-        """
-        Starts the client loop without blocking (separate thread)
-        """
-        try:
-            self.client.loop_start()
-        except Exception as e:
-            logging.error(f'Could not loop start client {self.client_id}', exc_info=True)
 
-
-    def run_forever(self):
+    def run(self, duration="as_needed"):
         """
-        starts the client loop, blocks
+        Takes an optional duration argument (defaults to 'as_needed')
+        If duration is always, runs loop_forever is that is not already the case 
+        For others, runs loop_start if that or loop_forever not already in play 
         """
-        try:
-            self.client.loop_forever()
-        except Exception as e:
-            logging.error(f'Could not loop forever client {self.client_id}', exc_info=True)
-
-    def run_stop(self):
-        """
-        stops the client loop 
-        """
-        try:
-            self.client.loop_stop()
-        except Exception as e:
-            logging.error(f'Could not loop stop client {self.client_id}', exc_info=True)
-
-    #Just a convenience wrapper for starting a client (does not block)
-    def connect_and_run(self):
-        """
-        connect and run, non-blocking 
-        """
-        self.connect()
-        self.run()
-
-    #Just a convenience wrapper for starting a client that blocks 
-    def connect_and_run_forever(self):
-        """
-        connect and run, blocking 
-        """
-        self.connect()
-        self.run_forever()
-
+        #Loop forever if not already
+        if duration == "always" and self.loop_forever == False:
+            try:
+                self.loop_forever = True
+                self.client.loop_forever()
+            except Exception as e:
+                logging.error(f'Could not loop forever client {self.client_id}', exc_info=True)
+        #Loop start if not already 
+        else:
+            if self.loop_forever == False and self.loop_start == False:
+                try:
+                    self.loop_start = True
+                    self.client.loop_start()
+                except Exception as e:
+                    logging.error(f'Could not loop start client {self.client_id}', exc_info=True)
 
     def publish(self, topic, message):
         """
@@ -232,8 +187,9 @@ class MQTT_Client():
         return return_val
 
 
-    def receive(self, address_names):
+    def receive(self, address_names, duration):
         """
+        High level exposure function of the carrier 
         Receives a list of addresses (all with same duration). Depending 
         on the duration and the address, it sets itself
         up to 'receive' spoofed messages and post them
@@ -256,47 +212,43 @@ class MQTT_Client():
         #Set the userdata 
         self.client.user_data_set(current_user_data)
         #Check the duration, then connect and run or connect and run forever
-        first_address = self.receive_addresses.get(address_names[0], {})
-        duration = first_address.get("duration", "as_needed")
         #Connect 
-        if duration == "always":
-            #Debug for now
-            print("in a forever mqtt listener")
-            self.connect_and_run_forever()
-        else:
-            self.connect_and_run()
+        self.connect(reconnect=True)
+        self.run(duration=duration)
 
-
-    def send(self, address_names, entry_ids=[]):
+    def send(self, address_names, duration, entry_ids=[]):
         """
+        High level exposure function of the carrier
         Takes in an optional list of entry ids
         Grabs the messages and publishes them, optionally filtering by ID 
+        No "always" duration is really defined for this driver, don't use with always 
         """
-        #Debug
-        print("Going to send!")
         for address_name in address_names:
-            print("Here!")
             try:
                 #Look up the topic
                 topic = self.address_topic_mapping.get(address_name, None)
-                print("Topic", topic)
                 if topic:
                     #Get the messages
                     messages = system_object.system.pickup_messages(address_name, entry_ids=entry_ids)
                     new_entry_ids = []
+                    sent_entries = self.sent_entries.get(topic, [])
+                    #Send each message individually 
+                    if messages != []:
+                        self.connect(reconnect=False)
+                        self.run(duration=duration)
                     for message in messages:
                         entry_id = message.get("entry_id", None)
                         new_entry_ids.append(entry_id)
-                        if entry_id not in self.sent_entries:
+                        
+                        #Send only if we haven't already sent it
+                        if entry_id not in sent_entries:
                             content = message.get("msg_content", {})
                             return_val = self.publish(topic, content)
-                            #Debug. CHANGE
-                            print(return_val)
-                    self.sent_entries = new_entry_ids
-                    print(self.sent_entries)
+                    self.sent_entries[topic] = new_entry_ids
             except Exception as e:
                 logging.error(f"Could not publish message on address {address_name}", exc_info=True)
     
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return MQTT_Client(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
 
+         
