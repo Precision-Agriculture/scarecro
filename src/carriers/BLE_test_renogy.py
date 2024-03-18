@@ -10,7 +10,7 @@ import util.util as util
 #Help from the documentation here: https://www.eclipse.org/paho/index.php?page=clients/python/docs/index.php#multiple
 
 
-class BluetoothGATT():
+class BLE():
     def __init__(self, config, send_addresses, receive_addresses, message_configs):
         """
         Bluetooth needs
@@ -42,7 +42,7 @@ class BluetoothGATT():
         pass 
     
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
-    return BluetoothGATT(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
+    return BLE(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
 
 
 
