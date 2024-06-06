@@ -72,6 +72,7 @@ class RenogyBT:
         """
         Function from Cyril Sebastian's Renogy BT Repo 
         """
+        bs = message.get("packet", "")
         data = {}
         data['function'] = self.FUNCTION[self.Bytes2Int(bs, 1, 1)]
         data['battery_percentage'] = self.Bytes2Int(bs, 3, 2)
@@ -94,6 +95,7 @@ class RenogyBT:
         data['power_consumption_today'] = self.Bytes2Int(bs, 43, 2)
         data['power_generation_total'] = self.Bytes2Int(bs, 59, 4)
         data['charging_status'] = self.CHARGING_STATE[self.Bytes2Int(bs, 68, 1)]
+        data['deviceid'] = message.get("mac_address", "default")
         return data
 
 
@@ -105,7 +107,10 @@ class RenogyBT:
         for message in messages:
             sub_message = message.get("msg_content", {})
             new_message = self.parse_charge_controller_info(sub_message)
+            new_message["time"] = message.get("msg_time", None)
             message["msg_content"] = new_message
+            #Envelope Override on the id here 
+            message["msg_id"] = new_message.get("deviceid", "default")
         return messages 
         
     # def process_out(self, message_type, messages):

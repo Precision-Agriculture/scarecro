@@ -1,5 +1,4 @@
 import sys 
-import pymongo
 import logging 
 import json
 from threading  import Thread

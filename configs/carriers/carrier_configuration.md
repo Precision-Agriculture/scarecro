@@ -17,3 +17,14 @@ send() - a function that takes in a list of addresses, the duration, (and an opt
 
 receive() - a function that takes in the address(es) names, duration, and is able to recieve the message(s) and package it before placing into the message table 
 
+
+A specific carrier source code definition should include: 
+
+* What durations, if any, a send/receive function is defined with 
+
+* Which arguments are necessary and which are optional in the config. Optional defaults if necessary. Kinds of values the arguments can take 
+
+* what form of message the carrier passes 
+to the handler 
+
+
