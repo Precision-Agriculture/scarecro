@@ -586,12 +586,99 @@ In the additional_info section of the address, this carrier expects a "string_ma
 
 ### The recieve function 
 The receive function takes in 2 arguments:
-* __address_names__: A list of address names 
+* __address_names__: A list of address names that should be active for the receive function. This may be a subset, but never a superset, of the receive addresses the carrier received during the initalization. The reason this may be a subset is because the same connection object might handle different message receipts at different times. 
+* __duration__: The duration of the receive, most likely a numeric number of seconds or the word "always". 
+The scheduler is using the duration for a carrier to decide how often to run the function. __If the duration is "always", the function should never return for normal behavior__. The scheduler will run the function with the expectation that the function won't return. If the duration is a number of seconds, __the carrier will run the function every time that number of seconds elapses__. It will **NOT** run that function for that number of seconds - it expects the function to run and then return. __It is up to the carrier implementer to decide how to long to wait, if any time at all, for receiving messages when the duration is not "always". The implementer could also decide to make this a configurable value. 
+
+Somewhere in the receive function, the carrier should have the ability to receive messages, tie them to address, and post them to the post office. 
+
+Here is the receive function for the 433 MHz carrier: 
+
+    def receive(self, address_names, duration):
+            """
+            Takes in the address names and the duration
+            For this driver, the duration will pretty much always be 'always'
+            You could potentally define other behavior, like listening 
+            for a set amount of time.  
+            """
+            cmd = self.make_command(address_names)
+            self.connect(cmd)
+            self.time_since_last_sample = time.time() - self.last_sample_received
+            if duration == "always":
+                while True:
+                    self.time_since_last_sample = time.time() - self.last_sample_received
+                    self.listen()
+            else:
+                try:
+                    prev_time = time.time()
+                    curr_time = time.time()
+                    time_out = curr_time-prev_time
+                    #Heuristic - could have this configured 
+                    while time_out < 20.0:
+                        self.listen()
+                        curr_time = time.time()
+                        time_out = curr_time-prev_time
+                    self.disconnect()
+                except Exception as e:
+                    logging.error(f"Could not listen on for period of time on 433 {e}")
+                
+You can see this function has the ability to make a driver command based on the active addresses it receives. It then decides to run a listen function either a forever loop or a timeout loop. The listen function (and nested functions) handle the message mapping and posting. 
+
+### The send function 
+The send function operates the same way as the receive function, except it has an additional optional keyword argument, __entry_ids__. This argument, if used, expects a list of entry_ids from the system message table, which has the send function send ONLY those entry ids. 
+
+The send function would use the __pickup_messages__ function from the system to get a list of messages to send. It then sends messages based on the carrier implementation. 
+
+For example, here is the send function for the mqtt carrier: 
+
+    def send(self, address_names, duration, entry_ids=[]):
+            """
+            High level exposure function of the carrier
+            Takes in an optional list of entry ids
+            Grabs the messages and publishes them, optionally filtering by ID 
+            No "always" duration is really defined for this driver, don't use with always 
+            """
+            for address_name in address_names:
+                try:
+                    #Look up the topic
+                    topic = self.address_topic_mapping.get(address_name, None)
+                    if topic:
+                        #Get the messages
+                        messages = system_object.system.pickup_messages(address_name, entry_ids=entry_ids)
+                        new_entry_ids = []
+                        sent_entries = self.sent_entries.get(topic, [])
+                        #Send each message individually 
+                        if messages != []:
+                            self.connect(reconnect=False)
+                            self.run(duration=duration)
+                        for message in messages:
+                            entry_id = message.get("entry_id", None)
+                            new_entry_ids.append(entry_id)
+                            
+                            #Send only if we haven't already sent it
+                            if entry_id not in sent_entries:
+                                content = message.get("msg_content", {})
+                                return_val = self.publish(topic, content)
+                        self.sent_entries[topic] = new_entry_ids
+                except Exception as e:
+                    logging.error(f"Could not publish message on address {address_name}", exc_info=True)
+        
+It can be seen that this function gets the topic mappig for each address it is passed. It picks up the messages for that address, grabs the entry id, and if it hasn't already sent the message corresponding the entry id, it sends it on the topic. 
+
+### The return object function 
+The return object funtion goes outside of the class definition, and takes in the same keyword arguments as the as init function for the class. This function simply returns the configured instance of the class. This function was implemented so the actual class code can be named according to programmers choice to improve readability. 
+
+The example return_object function for the mqtt carrier is below: 
+
+    def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
+    return MQTT_Client(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
+
 
 ### Documenting a New Carrier 
-
-* send/receive function or both and the supported durations for all 
-* 
+If you create a new carrier, you need to document what configurations the carrier supports, including
+* __Needed Carrier Configuration Info__: What information does the carrier implementation need in its own configuration? This could include something like a connection string, a username/password, or even a GPIO pin. 
+* __Send/Receive and Durations__: Does the carrier support sending or receiving or both? What duration types does it support for each function (send/receive)
+* __Address Configurations__: What information, if any, does an address need to include in its "additional_info" section to tie a message the carrier receives to a specific address, or to listen on that address in the first place? For example, for an mqtt carrier, this might be the sensor-specific mqtt topic. For a database carrier, this might be the database table name the address is tied to.  
 
 ## Writing a New Handler
 
