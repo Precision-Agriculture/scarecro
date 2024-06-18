@@ -486,7 +486,112 @@ TODO: Make sure you note inheritance and keyword substitution.
 
 ## Writing a New Carrier
 
+At the most basic level, a carrier is a python class with 2 required functions: 
+
+* an init function, which is called when a new instance of the class is made 
+
+* Either a __send__ function, or a __receive__ function, or both, depending on what the carrier class is capable of. 
+
+Outside of whatever the named carrier class is, there should be a return_object function that takes in the same init functions as the carrier (described later) and returns an instance of the carrier class. 
+
+### The code file
+The code file should have 
+* imports, including (most likely) the import of the system object 
+* The class stucture 
+* The return object function, returning an instance of the object 
+
+### The imports
+A developer will likely have their own code-specific imports, but most likely they will also be importing the system object to post and/or pickup messages. This import looks like: 
+
+    #This line moves the system path up a directory 
+    sys.path.append("../scarecro")
+    import system_object
+
+
+### The class structure 
+The class can be named whatever you want in python. For example, the top level class declaration for the 433 MHz carrier looks like: 
+
+    class Radio_433():
+
+### The init function 
+The init function for a carrier will always take in 4 arguments, which are passed in by the system: 
+
+    def __init__(self, config, send_addresses, receive_addresses, message_configs):
+
+These 4 arguments are:
+
+* config: The configuration for the carrier, passed in as the configuration dictionary 
+* send_addresses: A dictionary of addresses that this carrier should be sending messages on, or an empty dictionary if there are no addresses for this function. This dictionary takes the form:
+
+    {
+        address_name: address_config 
+    }
+
+* receive addresses: A dictionary of addresses that this carrier should be receiving messages on, or an empty dictionary if there are no addresses for this function. This dictionary also takes the form: 
+
+    {
+        address_name: address_config 
+    } 
+
+* message_configs: A dicionary of message configs indexed by message name. This contains all messages used by either send or receive addresses. It takes the form: 
+
+    {
+        message_type: message_config 
+    }
+
+The init function of a carrier would typically store all these variables in its own class variable for use by the carrier. As a __tip__, most carriers also want to make some sort of address mapping lookup table based on the messages they receive or send. This mapping information is usually defined somewhere in the address config, and allows the carrier to somehow tie the messages it receives on whatever protocol it uses to a specific address. 
+
+For example, here is the init function for the 433 MHz carrier: 
+
+    def __init__(self, config, send_addresses, receive_addresses, message_configs):
+            """
+            This driver doesn't really need anything configuration-wise
+            String matches and drivers are provided on an address level 
+            """
+            #For mongo, need to know if gateway or middle agent
+            #Because gateways use slightly outdated version. 
+            self.config = config.copy()
+            self.send_addresses = send_addresses.copy()
+            self.receive_addresses = receive_addresses.copy()
+            self.message_configs = message_configs.copy()
+            self.create_mappings()
+            self.cmd = ['/usr/local/bin/rtl_433', '-q', '-M', 'level', '-F', 'json']
+
+You can see that the actual carrier config doesn't contain a lot of info for this carrier. Often, for a carrier, the carrier config will contain remote connection info like a username/password. 
+
+However, the carrier init function copies all the init arguments to it's own class variables. It also has a subprocess command it uses as a class variable. In it's init function, it runs a create_mappings() function will ties the string match information provided on the address level to info it will receive in it's SDR stream. The create_mappings() function looks like: 
+
+    def create_mappings(self):
+            matches_address_mapping = {}
+            address_matches_mapping = {}
+            driver_address_mapping = {}
+            address_driver_mapping = {}
+
+            all_addresses = {**self.send_addresses, **self.receive_addresses}
+            for address_name, address_config in all_addresses.items():
+                add_info = address_config.get("additional_info", {})
+                string_matches = add_info.get("string_matches", [])
+                driver = add_info.get("driver", None)
+                driver_address_mapping[driver] = address_name
+                address_driver_mapping[address_name] = driver
+                for match in string_matches:
+                    matches_address_mapping[match] = address_name
+                address_matches_mapping[address_name] = string_matches
+            self.matches_address_mapping = matches_address_mapping
+            self.address_matches_mapping = address_matches_mapping
+            self.driver_address_mapping = driver_address_mapping
+            self.address_driver_mapping = address_driver_mapping
+
+In the additional_info section of the address, this carrier expects a "string_matches" field which allows it to tie this address to stream information. It creates these ties from address to string match and from string match to address. It also matches the "driver" field of the address to the driver command argument it will need to use when initializing the SDR listen stream. 
+
+### The recieve function 
+The receive function takes in 2 arguments:
+* __address_names__: A list of address names 
+
 ### Documenting a New Carrier 
+
+* send/receive function or both and the supported durations for all 
+* 
 
 ## Writing a New Handler
 
