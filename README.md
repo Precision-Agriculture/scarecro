@@ -243,8 +243,6 @@ The system will initialize when it creates a system object. The system object ex
 
 6. __Create a message table__: This system will create an internal message table, with a new entry for each configured message in the system. This new entry for each message is a dictionary with the latest_entry_id field defaulting to 0, a new semaphore object specific to that message type, and a "messages" field linked to an empty dictionary. 
 
-NOTE: Need to indicate what these objects look like IN THE SYSTEM - TODO 
-
 7. __Instantiate the handler objects__: The system will create a new handler object from indicated source code based on the active handler object configurations. This will be stored in the system handler dict (self.handlers) indexed by the handler name.  
 
 8. __Instantiate the carrier objects__: The system will create a new carrier from the indicated source code based  on the active carrier object configurations. This will be stored in the system carrier dict (self.carriers) indexed by the carrier name. 
@@ -450,7 +448,35 @@ The envelope_message function:
 * Uses the message type from the address to populate the message type field
 * Puts the passed message into the "msg_content" field 
 
-TODO: Add envelope code example 
+Example enveloped message: 
+
+    {
+        'msg_id': '1', 
+        'msg_time': 'now', 
+        'msg_type': 
+        'test_message', 
+        'msg_content': 
+            {
+                'id': '1', 
+                'time': 'now', 
+                'place': 'here', 
+                'who': 'me',
+                'processed_by_fake_message_handler': True
+            }, 
+        'entry_id': 1}
+    } 
+
+Where the raw message was: 
+
+    {
+        'id': '1', 
+        'time': 'now', 
+        'place': 'here', 
+        'who': 'me',
+        'processed_by_fake_message_handler': True
+    }
+
+
 
 When the enveloped message(s) is/are posted along with the address via the "post_messages" function, the following occurs:
 
@@ -543,9 +569,9 @@ Inheritance is resolved left-to-right in the list. Inherited configs can inherit
 There are two substiution keywords that can be handy to elimiate duplicate code in the configs. 
 
 * __$name__: This replaces the key or value with the name of the config. 
-*__$msg_type__: This replaces the key or value with the "message_type" indexed value relevant for the config (helpful for addresses)
+* __$msg_type__: This replaces the key or value with the "message_type" indexed value relevant for the config (helpful for addresses)
 
-These keywords __Do Not Inherit__. These are passed through to configuration of interest. 
+These keywords __Do Not Inherit__. These are passed through to the configuration of interest. 
 
 
 ## Writing a New Carrier
@@ -773,7 +799,6 @@ This follow this same format as for carriers. For example, for the KKM_K6P handl
     def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
         return KKM_K6P(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
 
-
 ### Documenting a New Handler 
 Handler documentation should include: 
 * What init information should be included in the specific handler initialization
@@ -795,3 +820,4 @@ TODO
 ### Currently implmented handlers 
 * kkm_k6p: process function 
 * renogy_solar_charger: process function
+
