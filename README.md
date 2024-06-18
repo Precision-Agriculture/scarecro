@@ -34,7 +34,7 @@ The src sub folders contain the code implementation of SCARECRO item classes.
 The system_object.py file will be used by the repo to create the global system object the system makes use of. 
 
 
-## Class Diagram
+## Class or System Diagram
 TODO: Insert a class diagram that relates all the system components together. 
 
 ## Basic Concepts
@@ -322,7 +322,7 @@ For example:
         }
     }
 
-__Handlers__: A dictionary stored in self.handlers of the form: 
+__Handlers__: A dictionary stored in self.handlers variables of the form: 
 
     {
         "handler_name": {
@@ -347,9 +347,58 @@ For example:
         }
     }
 
-self.carriers: TODO 
+__Carriers__:
 
-self.tasks: TODO 
+A dictionary stored in the self.carriers variable of the form: 
+
+    {
+        "carrier_name": {
+            "addresses": [list of addresses that use this carrier],
+            "content": carrier config, 
+            "object": reference to actual class object of carrier instantiation 
+        }  
+    }
+
+For example: 
+
+    {
+        "mqtt_sensor_listener": {
+            "addresses": [
+                "datagator_mqtt_in",
+                "datagator_mqtt_out"
+            ],
+            "content": {
+                "source": "mqtt",
+                "mqtt_url": "b56765a64ba74fa582ab3cadc77f918a.s2.eu.hivemq.cloud",
+                "mqtt_port": 8883,
+                "mqtt_username": "soacdevice",
+                "mqtt_password": "Mc1nt0sh",
+                "qos": 1,
+                "client_id": "sensor_listener"
+            },
+            "object": "<src.carriers.mqtt.MQTT_Client object at 0x7f49807a3208>"
+        }
+    }
+
+
+__Tasks__: 
+A dictionary stored in the self.tasks variable of the form: 
+
+    {
+        "task_name": task config
+    }
+
+For example: 
+
+{
+    "fake_print_often": {
+        "source": "fake_task_options",
+        "function": "obnoxious_print",
+        "arguments": {},
+        "duration": 8,
+        "object": "<src.tasks.fake_task_options.FakeTasks object at 0x7f4dd5d06ac8>"
+    }
+}
 
 ### Scheduling functions and tasks 
 In order to schedule system functionality correctly, the system needs to understand what functions need to be run when. So, the system creates a dictionary for the scheduler with the following form: 
@@ -379,15 +428,57 @@ The above dictionaries are created based on the durations configured in both the
 
 After the __scheduler_dict__ object is created, the jobs can be scheduled with the scheduler. Jobs with a numeric duration or a duration equal to "always" are scheduled with the scheduler. Jobs with a duration that doesn't fit these categories are not scheduled. Carriers and tasks are scheduled nearly the same way, except carrier object functions expect the duration value, which is appended to their arguments field of the job scheduling. 
 
-### Sending and Receiving Messages, To/From Carriers 
-TODO: Expand on this 
-* envelope_message
-* post_messages
-* pickup_messages 
+### Posting and Picking Up Messages from the Post Office
+
+#### Posting Messages from Carrier to the Post Office
+
+Carriers (see Writing a New Carrier) should have at minimum, a receive or send function. If the carrier is written to receive messages, at some point in the receive function (or in a sub-function executed by the receive function), the carrier should at some point use the __post_messages__ function of the system object to drop the messages off at the post office. The function takes two arguments:
+
+1. The message (or list of messages), in enveloped format,
+2. The name of the address the message is being sent on 
+
+To envelope the message, the carriers can either implement the enveloping format around the message themselves, or they can use the envelope_message function of the system object. The __envelope_message__ function takes two arguments:
+
+1. The raw message (in a dictionary format)
+2. The address associated with the message 
+
+This function uses the message field information to try and envelope the message. However, any envelope information can be overriden by the handler, which is often useful if the raw data is not in the correct format yet or if the message keeps track of the reading time separately from the system receipt. 
+
+The envelope_message function:
+* Uses the message id_field information to get the message id
+* Uses the current time in UTC to populate the time field
+* Uses the message type from the address to populate the message type field
+* Puts the passed message into the "msg_content" field 
+
+TODO: Add envelope code example 
+
+When the enveloped message(s) is/are posted along with the address via the "post_messages" function, the following occurs:
+
+* All messages are run through their configured handler, if they have one. The handler may make changes to the time field or id field, depending on how it parses content 
+* The message is added to the message table in the system. This "stamps" the message, added the "latest_entry_id" field to the envelope structure. The latest entry id is also updated in the internal message table structure. 
+* The message is checked for any "on_message" triggers that need to be executed if that particular message is received. Those triggers are then executed. 
+
+#### Picking Up Messages from the Post Office to the Carrier
+The carrier picks up post office messages via the __pickup_messages__ function. This function takes in the address name, and can optionally take in a keyword argument of __entry_ids__. The entry_ids are a list of entry ids in the message table (and in the stamped message envelope). This is a useful argument for on_message carrier triggers, as it allows them to only pick up the new message. When this keyword is not supplied, all messages corresponding to the address are picked up and returned as a list. 
+
+#### Importing the System Object
+
+For carrier to use the system object, the carrier needs to import the system object: 
+
+    import system_object 
 
 
-### Running Tests 
+Then the carrier will need to reference the functions on the system attribute of the system object, like:
 
+    system_object.system.pickup_messages(address_name)
+
+
+## Running Tests 
+Test are generally stored in the __tests__ folder and are name test_<speficic_item_tested>.py 
+
+The recommended way to run tests is by invoking them from the root of the scarecro folder: 
+
+    python3 tests/example_test.py 
 
 ## Configurations
 TODO: Link to all the configuration READMEs. 
@@ -395,6 +486,15 @@ TODO: Make sure you note inheritance and keyword substitution.
 
 ## Writing a New Carrier
 
+### Documenting a New Carrier 
+
 ## Writing a New Handler
 
+### Documenting a New Handler 
+
 ## Writing a New Task 
+
+### Documenting a New Task 
+
+## Currently implemented 
+### Currently implemented carriers
