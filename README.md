@@ -481,8 +481,72 @@ The recommended way to run tests is by invoking them from the root of the scarec
     python3 tests/example_test.py 
 
 ## Configurations
-TODO: Link to all the configuration READMEs. 
+TODO: Link to all the configuration READMEs.
+Addresses - configs/addresses/address_configuration.md
+Carriers - configs/carriers/carrier_configuration.md 
+Handlers - configs/handlers/handler_configuration.md 
+Messages - configs/messages/message_configuration.md 
+System - configs/system/system_configuration.md
+Tasks - configs/tasks/ -- TODO
+
 TODO: Make sure you note inheritance and keyword substitution. 
+
+
+### Inheritance
+Most configurations have a field called "inheritance". This links to an expected list of configurations to inherit from. 
+
+For example, let's say we have an address configuration called fake_receive.py: 
+
+    address = {
+        "inheritance":[],
+        "message_type": "test_message",
+        "handler": "fake_message_handler",
+        "handler_function": "process",
+        "send_or_receive": "receive",
+        "carrier": "fake_message_listener",
+        "duration": 10,
+    }
+
+And then we have another address configuration called fake_receive_level_2.py 
+
+    address = {
+        "inheritance":["fake_receive"],
+        "message_type": "test_message_level_1",
+        "carrier": "fake_message_listener_level_2",
+        "$name": "$msg_type",
+        "additional_info": {
+            "topic": "ice_cream" 
+        } 
+    }
+
+We can see that this address configuration inherits from the fake_receive address configuration. At runtime, all of fake_receive's field will be placed into this configuration. If there is a conflict where they have the same field, fake_receive_level_2's fields will override the inherited fields. 
+
+So the runtime configuration would look like: 
+
+    address = {
+            "inheritance":["fake_receive"],
+            "message_type": "test_message_level_1",
+            "handler": "fake_message_handler",
+            "handler_function": "process",
+            "send_or_receive": "receive",
+            "carrier": "fake_message_listener_level_2",
+            "$name": "$msg_type",
+            "duration": 10,
+            "additional_info": {
+                "topic": "ice_cream" 
+            } 
+        }
+
+Inheritance is resolved left-to-right in the list. Inherited configs can inherit from other configs, which are resolved as they arise. Inherited dictionaries will update with new keys or override the same keys. 
+
+### Keyword substitution 
+There are two substiution keywords that can be handy to elimiate duplicate code in the configs. 
+
+* __$name__: This replaces the key or value with the name of the config. 
+*__$msg_type__: This replaces the key or value with the "message_type" indexed value relevant for the config (helpful for addresses)
+
+These keywords __Do Not Inherit__. These are passed through to configuration of interest. 
+
 
 ## Writing a New Carrier
 
@@ -523,21 +587,21 @@ These 4 arguments are:
 * config: The configuration for the carrier, passed in as the configuration dictionary 
 * send_addresses: A dictionary of addresses that this carrier should be sending messages on, or an empty dictionary if there are no addresses for this function. This dictionary takes the form:
 
-    {
-        address_name: address_config 
-    }
+        {
+            address_name: address_config 
+        }
 
 * receive addresses: A dictionary of addresses that this carrier should be receiving messages on, or an empty dictionary if there are no addresses for this function. This dictionary also takes the form: 
 
-    {
-        address_name: address_config 
-    } 
+        {
+            address_name: address_config 
+        } 
 
 * message_configs: A dicionary of message configs indexed by message name. This contains all messages used by either send or receive addresses. It takes the form: 
 
-    {
-        message_type: message_config 
-    }
+        {
+            message_type: message_config 
+        }
 
 The init function of a carrier would typically store all these variables in its own class variable for use by the carrier. As a __tip__, most carriers also want to make some sort of address mapping lookup table based on the messages they receive or send. This mapping information is usually defined somewhere in the address config, and allows the carrier to somehow tie the messages it receives on whatever protocol it uses to a specific address. 
 
@@ -681,12 +745,53 @@ If you create a new carrier, you need to document what configurations the carrie
 * __Address Configurations__: What information, if any, does an address need to include in its "additional_info" section to tie a message the carrier receives to a specific address, or to listen on that address in the first place? For example, for an mqtt carrier, this might be the sensor-specific mqtt topic. For a database carrier, this might be the database table name the address is tied to.  
 
 ## Writing a New Handler
+A handler class needs the following:
+* a class definition with an init function and one or more process functions 
+* a return object function, similar to the carrier function with returns an instance of the handler class. 
+
+### The init function 
+The init function for the handler takes the following arguments
+* __config__: The handler specific config dictionary
+* __send_addresses__: A dictionary of send function addresses, the same as for carriers
+* __receive_addresses__: A dictionary of receive addresses, the same as for carriers
+* __message_configs__: A dictionary of message configurations, the same as for carriers. 
+
+The handler may or may not need to use this information. 
+
+### One or more process functions. 
+Each process function can be named anything, but will receive two arguments:
+* __message_type__: The type of message
+* __messages__: A list of messages to process 
+
+The function may or may not use the addresses to tie processing information together. 
+
+The processing functions should return a list of processed messages 
+
+### Return object function
+This follow this same format as for carriers. For example, for the KKM_K6P handler, it looks like: 
+
+    def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
+        return KKM_K6P(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
+
 
 ### Documenting a New Handler 
+Handler documentation should include: 
+* What init information should be included in the specific handler initialization
+* What address-specific information should be included in the address, if any. 
+* What functions can be used as processing functions and the circumstances each should be used in. Include any envelope overrides, if necessary. 
 
 ## Writing a New Task 
+TODO 
 
 ### Documenting a New Task 
+TODO 
 
 ## Currently implemented 
 ### Currently implemented carriers
+* 433 MHz: receive-always
+* MQTT: receive-always, receive-numeric, send-numeric
+* BLE (in progress) - receive-always, receive-numeric 
+
+### Currently implmented handlers 
+* kkm_k6p: process function 
+* renogy_solar_charger: process function

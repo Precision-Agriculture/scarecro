@@ -139,7 +139,7 @@ class System:
         Take in the configuration name and content (and optionally)
         a higher level substitution dict and perform the substitution
         on the configuration content. 
-        Returns: content wirh substition performed
+        Returns: content with substition performed
         """
         subs = ["$name", "$msg_type"]
         if sub_dict == None:
