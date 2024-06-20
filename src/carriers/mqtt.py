@@ -25,6 +25,9 @@ class MQTT_Client():
         self.send_addresses = send_addresses 
         self.receive_addresses = receive_addresses
         self.message_configs = message_configs
+        #See if we need to be passing in mqtt topic in our message
+        self.include_topic = self.config.get("include_topic", False)
+
         #Set up connection info 
         self.mqtt_url = self.config.get("mqtt_url", '127.0.0.1')
         self.mqtt_port = self.config.get("mqtt_port", '1883')
@@ -32,12 +35,15 @@ class MQTT_Client():
         self.mqtt_password = self.config.get("mqtt_password", None)
         self.qos = self.config.get("qos", 1)
         self.client_id = self.config.get("client_id", "default")
-        #self.protocol_num = self.config.get("version", 5)
+        self.protocol_num = self.config.get("version", 5)
         #if self.protocol_num == 5:
         self.protocol = paho.MQTTv5
         #else:
         #    self.protocol = paho.MQTTv3
-        self.client = paho.Client(client_id=self.client_id, protocol=self.protocol)
+        if self.protocol_num == 5:
+            self.client = paho.Client(client_id=self.client_id, protocol=self.protocol)
+        else:
+            self.client = paho.Client(client_id=self.client_id)
         #Set up security info 
         if self.mqtt_username and self.mqtt_password:
             self.client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
@@ -69,21 +75,43 @@ class MQTT_Client():
         self.topic_address_mapping = topic_address_mapping
         self.address_topic_mapping = address_topic_mapping
 
+    def check_topic_map(self, topic_name):
+        """
+        String matches topic names 
+        NEED TO CHECK - MARKED 
+        """
+        address_map = self.topic_address_mapping.get(topic_name, None)
+        if address_map == None:
+            for key, value in self.topic_address_mapping.items():
+                if key in topic_name:
+                    address_map = value
+        return address_map 
+
+
     def receive_message(self, client, userdata, message):
         """
         Takes in client, userdata, and message
         Follows the paho function footprint for receiving a message
         Each subscription gets it's own instance of this callback. 
         """
+        #Need to change so it can handle nested topics!!
+        #MARKED 
         #Get the topic
         topic_name = message.topic
         #Debug for now
         logging.debug(f"Got message {json.loads(message.payload)} on topic {message.topic}")
         #Map it to an address
-        address_name = self.topic_address_mapping.get(topic_name, None)
+        address_name = self.check_topic_map(topic_name)
+        message_body = json.loads(message.payload)
+        # print("Received Message")
+        # print(topic_name, message_body)
+        # print(address_name)
+        if self.include_topic:
+            message_body["topic"] = topic_name
         if address_name:
             #Post it
-            enveloped_message = system_object.system.envelope_message(json.loads(message.payload), address_name)
+            #MARKED - need to change to include topic list, unfortunately! 
+            enveloped_message = system_object.system.envelope_message(message_body, address_name)
             system_object.system.post_messages(enveloped_message, address_name)
             #logging.debug(system_object.system.print_message_entries_dict())
 
@@ -96,7 +124,11 @@ class MQTT_Client():
         """
         subscriptions = []
         for address_name in addresses:
-            subscriptions.append(self.address_topic_mapping.get(address_name, None))
+            subscriptions.append(f"{self.address_topic_mapping.get(address_name, None)}/#")
+
+        #MARKED - DEBUG - CHANGE
+        # print("SUBSCRIPTIONS")
+        # print(subscriptions)
         return subscriptions
 
      #Connects to the broker. 
@@ -110,9 +142,15 @@ class MQTT_Client():
                 #If we want to reconnect 
                 if reconnect:
                     self.disconnect_from_broker()
-                    self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
+                    if self.protocol_num == 5:
+                        self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
+                    else:
+                        self.client.connect(self.mqtt_url, port=self.mqtt_port)
             else:
-                self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
+                if self.protocol_num == 5:
+                    self.client.connect(self.mqtt_url, port=self.mqtt_port, clean_start=False)
+                else:
+                    self.client.connect(self.mqtt_url, port=self.mqtt_port)
         except Exception as e:
             logging.error(f'Could not connect client {self.client_id}', exc_info=True)
 

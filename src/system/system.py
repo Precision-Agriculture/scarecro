@@ -436,6 +436,9 @@ class System:
                 self.check_message_triggers(message_type, entry_ids=entry_ids)
         except Exception as e:
             logging.error(f"Could not post message on address {address_name}", exc_info=True)
+
+        #DEBUG - MARKED - CHANGE
+        self.print_message_entries_dict()
         return result
     
     def filter_messages(self, messages, entry_ids):
