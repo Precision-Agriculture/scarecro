@@ -1,6 +1,8 @@
 # SCARECRO 
 The Sensor Collection and Remote Environment Care Reasoning Operation (SCARECRO) software repo
 
+![SCARECRO Post Logo](/imgs/Scarecro%20Post%20Logoldpi.png)
+
 ## Status
 This repository is a work in progress. An initial version of SCARECRO is implemented in several test areas. We are currently in the process of refactoring the software as we release it open-source. 
 
@@ -34,8 +36,9 @@ The src sub folders contain the code implementation of SCARECRO item classes.
 The system_object.py file will be used by the repo to create the global system object the system makes use of. 
 
 
-## Class or System Diagram
-TODO: Insert a class diagram that relates all the system components together. 
+## System Diagram
+
+![System Diagram Relating Components](/imgs/overall_system.png)
 
 ## Basic Concepts
 There are two basic concepts to the SCARECRO system:
@@ -44,6 +47,8 @@ There are two basic concepts to the SCARECRO system:
 
 * __configurations__: The configured instances of a class or function implemented in the source code. 
 
+![Source Code and Configurations Diagram](/imgs/system_config_and_source.png)
+
 What's key is that there can be multiple configurations for one implementation of the source code. We have found that to be necessary to handle multiple types of communication protocol, message type, database, etc. 
 
 ## Basic Classes
@@ -51,16 +56,30 @@ There are several basic classes of object in the SCARECRO system. These are:
 
 * __messages__: These are the most basic type of configuration in the system. Messages must at least contain an id_field (to indicate what actor sent the message) and a time field (to indicate when the message was sent). Messages    
 
+![Messages Diagram](/imgs/messages.png)
+
 * __carriers__: Carriers send and receive messages. There analogous component in the post office illustration could be a mail car, a mail truck, a door-to-door mail carrier, or even a mail plane. Carrier configurations should have, at minimum, a source field indicating the source code implementation of the carrier.
 
+![Carrier Diagram](/imgs/carriers.png)
+
 * __handlers__: Handlers are objects that deal with message content, including structuring, reorganizing, interpreting, or reorganizing message content. Handlers may not be necessary in all cases, especially if a message comes ready to use from a sensor. Handlers can be different on a incoming or outgoing message, or may only be used in one or the other. Handler functionality could be implemented entirely within a carrier, but it is often useful to separate this functionality, especially when working with multiple different brands of sensors using the same communication protocol (like several bluetooth sensors with different manufacturers). Handler configurations, should, at minimum, have a source field which indicates their source code class implementation. 
-Why are handlers necessary? Sometimes you might have a group of sensors that use related interpration or cleaning functions which are useful to have decoupled from the actual sending/receiving procotols, especially if those protocols are shared with others types of sensors or data sources. 
+
+    Why are handlers necessary? Sometimes you might have a group of sensors that use related interpration or cleaning functions which are useful to have decoupled from the actual sending/receiving procotols, especially if those protocols are shared with others types of sensors or data sources. 
+
+![Handlers Diagram](/imgs/handlers.png)
 
 * __addresses__: The address configuration is necessary to actually send and receive messages, and ties together carriers, handlers, and messages. Configured addressed have an inheritance field (similar to the other objects) That allows them to inherit configuration values from other addresses, a message_type field indicating what type of message is to be sent or received, a handler field indicating the name of the handler config to be used, a handler_function field, indicating the function name to be used on the handler class, a send_or_receive function, which can take the value "send" or "receive" to indicate if the address is incoming or outgoing, and a "duration" field. There are 4 possible durations: "always", (typically only relevant on a "receive" message), indicating that the the carrier should always be listening for this message, a value in seconds (integer value), which indicates how often the message will be sent or received, "on_message" (only releavant on a "send" message), indicating the message should be sent as soon as one is received, and "as_needed", which indicates the send or receive is triggered by something else and has no default triggering behavior. Finally, addresses have an "additional_info" field which should link to a dictionary of additional key-pairs that may relevant for any functionality in the system. For instance, certain carriers may requre per-message string matches. Some additional info may be implemented at the message level, or at the address level - programmer's choice. 
 
+
+![Address Diagram](/imgs/addresses.png)
+
 * __tasks__: TODO: Implement. Tasks are system (post office in the analogy)-specific functionality vital to keep the processes running smoothly. 
 
+![Tasks Diagram](/imgs/tasks.png)
+
 * __system__: The system object is a special type of class to configure system parameters. It is described in more detail in a later section. 
+
+![System Object Diagram](/imgs/system.png)
 
 
 ## System Object 
@@ -225,8 +244,6 @@ You can see that only the latest message from each possible sender (indicated by
 
 ## System Behavior 
 
-
-
 ### Initializing the system 
 
 The system will initialize when it creates a system object. The system object expects a system configuration dictionary to be located in configs/system in a file called system.py, which contains one variable named "system" linked to a dictionary (system = {...}). However, this expectation can be overriden by passing the system a custom system configuration dictionaryt, which it will use instead. To initialize, the system will do the following: 
@@ -255,6 +272,7 @@ The system will initialize when it creates a system object. The system object ex
 
 12. __Start the scheduler__: The system will start the job scheduler. This is a non-blocking start, and there must be logic elsewhere in the program to to keep the program running forever without returning. 
 
+![System Behavior Diagram](/imgs/system_behavior.png)
 
 ### Underlying system storage of objects and configurations 
 
@@ -428,6 +446,8 @@ After the __scheduler_dict__ object is created, the jobs can be scheduled with t
 
 ### Posting and Picking Up Messages from the Post Office
 
+![Message Behavior Diagram](/imgs/message_behavior.png)
+
 #### Posting Messages from Carrier to the Post Office
 
 Carriers (see Writing a New Carrier) should have at minimum, a receive or send function. If the carrier is written to receive messages, at some point in the receive function (or in a sub-function executed by the receive function), the carrier should at some point use the __post_messages__ function of the system object to drop the messages off at the post office. The function takes two arguments:
@@ -507,16 +527,17 @@ The recommended way to run tests is by invoking them from the root of the scarec
     python3 tests/example_test.py 
 
 ## Configurations
-TODO: Link to all the configuration READMEs.
-Addresses - configs/addresses/address_configuration.md
-Carriers - configs/carriers/carrier_configuration.md 
-Handlers - configs/handlers/handler_configuration.md 
-Messages - configs/messages/message_configuration.md 
-System - configs/system/system_configuration.md
+[Addresses](configs/addresses/address_configuration.md)
+
+[Carriers](configs/carriers/carrier_configuration.md)
+
+[Handlers](configs/handlers/handler_configuration.md)
+
+[Messages](configs/messages/message_configuration.md)
+
+[System](configs/system/system_configuration.md)
+
 Tasks - configs/tasks/ -- TODO
-
-TODO: Make sure you note inheritance and keyword substitution. 
-
 
 ### Inheritance
 Most configurations have a field called "inheritance". This links to an expected list of configurations to inherit from. 
@@ -578,7 +599,7 @@ These keywords __Do Not Inherit__. These are passed through to the configuration
 
 At the most basic level, a carrier is a python class with 2 required functions: 
 
-* an init function, which is called when a new instance of the class is made 
+* an __init__ function, which is called when a new instance of the class is made 
 
 * Either a __send__ function, or a __receive__ function, or both, depending on what the carrier class is capable of. 
 
