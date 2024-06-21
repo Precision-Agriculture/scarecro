@@ -3,7 +3,6 @@ import pymongo
 import logging 
 import json
 sys.path.append("../scarecro")
-sys.path.append("../scarecro")
 import system_object
 
 

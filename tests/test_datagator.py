@@ -20,7 +20,8 @@ system_config = {
         "generic_pH_mqtt_in",
         "minew_s1_mqtt_in",
         "kkm_k6p_mqtt_in",
-        "meter_teros10_mqtt_in"
+        "meter_teros10_mqtt_in",
+        "datagator_ota_mqtt_in"
     ]
 }
 system_object.system = system_class.return_object(system_config=system_config)
