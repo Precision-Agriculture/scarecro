@@ -14,7 +14,8 @@ class Camera:
         Initializes the task with configuration provided 
         """
         self.config = config.copy()
-        self.duration = self.config.get("duration", )
+        #Fix 
+        self.duration = self.config.get("duration", "?")
         print("Initializing a Camera Class") 
         #Config needs a folder where pictures should be stored
         #And a possible S3 upload, maybe? 

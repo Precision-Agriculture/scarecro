@@ -129,9 +129,18 @@ class System:
         """
         sub_dict = {
             "$name": name,
-            "$msg_type": content.get("message_type", None)
+            "$msg_type": content.get("message_type", None),
+            "$system_id": self.system_config.get("id", "default")
         }
         return sub_dict
+
+    def return_sub_keywords(self):
+        """
+        Returns a list of authorized substitution 
+        keywords for the system 
+        """
+        sub_keywords = ["$name", "$msg_type", "$system_id"]
+        return sub_keywords.copy()
 
     #Also going to recursively call this 
     def substitution_content(self, name, content, sub_dict=None):
@@ -141,7 +150,8 @@ class System:
         on the configuration content. 
         Returns: content with substition performed
         """
-        subs = ["$name", "$msg_type"]
+        #Change is here - previously just had sub dict keys list 
+        subs = self.return_sub_keywords()
         if sub_dict == None:
             sub_dict = self.make_sub_dict(content, name)
         for key, val in content.items():

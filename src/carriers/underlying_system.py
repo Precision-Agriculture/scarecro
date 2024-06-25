@@ -1,0 +1,139 @@
+from datetime import datetime
+import pytz
+import psutil
+import re
+import subprocess
+import time 
+#Help from here: https://stackoverflow.com/questions/276052/how-to-get-current-cpu-and-ram-usage-in-python
+#https://stackoverflow.com/questions/42471475/fastest-way-to-get-system-uptime-in-python-in-linux
+#Internal temp help from Nikolai 
+import logging
+import sys 
+
+sys.path.append("../scarecro")
+import system_object
+
+
+class UnderlyingSystem():
+    """
+    Driver for Getting Underlying System Info .
+    """
+    def __init__(self, config, send_addresses, receive_addresses, message_configs):
+        """
+        This driver doesn't really need anything configuration-wise
+        String matches and drivers are provided on an address level 
+        """
+        #For mongo, need to know if gateway or middle agent
+        #Because gateways use slightly outdated version. 
+        self.config = config.copy()
+        self.send_addresses = send_addresses.copy()
+        self.receive_addresses = receive_addresses.copy()
+        self.message_configs = message_configs.copy()
+        self.create_mappings("function")
+
+    def create_mappings(self, key):
+        """
+        Map the function reader to the address name 
+        And vice versa 
+        """
+        key_address_mapping = {}
+        address_key_mapping = {}
+        all_addresses = {**self.send_addresses, **self.receive_addresses}
+        for address_name, address_config in all_addresses.items():
+            add_info = address_config.get("additional_info", {})
+            key_val = add_info.get("function", None)
+            key_address_mapping[key_val] = address_name
+            address_key_mapping[address_name] = key_val
+        self.key_address_mapping = key_address_mapping
+        self.address_key_mapping = address_key_mapping
+
+
+    def add_id_to_reading(self, reading, address_name):
+        """
+        Adds the id from the configured carrier to the readings
+        """
+        #Get the id from the message 
+        address_config = self.receive_addresses.get(address_name, {})
+        msg_type = address_config.get("message_type", None)
+        msg_config = self.message_configs.get(msg_type, {})
+        msg_id = msg_config.get("id_field", "id")
+        reading[msg_id] = self.config.get("id", "default")
+        return reading 
+        
+
+    def status_reading(self):
+        #Need to replace this with a system call - or else configured in the addresses?
+        #Make new system keyword substitution - system_id 
+        new_dict = {}
+        try:
+            utc_curr_time = datetime.now(tz=pytz.UTC)
+            time_string = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+            new_dict["time"] = time_string
+            new_dict["cpu_usage"] = psutil.cpu_percent()
+            new_dict["memory_free"] = round(psutil.virtual_memory().available*100/psutil.virtual_memory().total, 2)
+            try:
+                err, pitemp = subprocess.getstatusoutput("vcgencmd measure_temp")
+                temp = re.search(r'-?\d.?\d*', pitemp)
+                tempformatted = float(temp.group())
+                #Internal Pi Temperature 
+                new_dict["internal_temp"] = round(tempformatted, 1)
+            except Exception as e:
+                logging.error("Could not get internal temp", exc_info=True)
+            #uptime
+            uptime = time.time() - psutil.boot_time()
+            new_dict["uptime"] = round(uptime, 2)
+            logging.info(f"Gateway Stats Reading: {new_dict}")
+        except Exception as e:
+            logging.error("Could not process gateway stats reading", exc_info=True)
+            new_dict = {}
+        return new_dict 
+
+
+    def process_readings(self, address_names):
+        try:
+            #For each address
+            for address_name in address_names:
+                    #Find the function 
+                    function_name = self.address_key_mapping.get(address_name, None)
+                    print("Function name", function_name)
+                    if function_name == "status_reading": 
+                        reading = self.status_reading()
+                        #Add the id 
+                        reading = self.add_id_to_reading(reading, address_name)
+                        enveloped_message = system_object.system.envelope_message(reading, address_name)
+                        system_object.system.post_messages(enveloped_message, address_name)
+        except Exception as e:
+            logging.error(f"Issue processing readings for underlying system {e}")
+
+    def receive(self, address_names, duration):
+        """
+        Takes in the address names and the duration
+        For this driver, the duration will pretty much always be 'always'
+        You could potentally define other behavior, like listening 
+        for a set amount of time.  
+        """
+        if duration == "always":
+            while True:
+                try:
+                    self.process_readings(address_names)
+                    #Default time between tries 
+                    time.sleep(300)
+                except Exception as e:
+                    logging.error(f"Issue processing readings ('always' duration) for underlying system {e}")
+                    #Wait a bit before trying again 
+                    time.sleep(300)    
+        else:
+            self.process_readings(address_names)
+            
+    def send(self, address_names, duration, entry_ids=[]):
+        """
+        Not really defined for this driver 
+        Right now, driver only capable of listening on 433 radio,
+        not sending
+        """
+        pass 
+    
+def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
+    return UnderlyingSystem(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
+
+         

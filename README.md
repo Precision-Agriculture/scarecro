@@ -99,7 +99,7 @@ Again, by default this lives in the "system" folder under the "configs" folder w
 The system object is the main "brain" of the SCARECRO system. It is responsible for:
 * Initializing itself with the proper functionality it is configured for. This includes:
     * Ensuring proper inheritance on all configurations
-    * Ensuring keyword substituion on all configurations
+    * Ensuring keyword substitution on all configurations
     * Ensuring source code exists for all configurations  
 * Scheduling all system behavior, including:
     * All carrier sending/receiving functions, at the proper duration, or linked to the proper trigger
@@ -591,6 +591,7 @@ There are two substiution keywords that can be handy to elimiate duplicate code 
 
 * __$name__: This replaces the key or value with the name of the config. 
 * __$msg_type__: This replaces the key or value with the "message_type" indexed value relevant for the config (helpful for addresses)
+* __$system_id__: Replaces the key or value with the system id value from the system config. This is often useful for a message or piece of information directly tied to the system instance 
 
 These keywords __Do Not Inherit__. These are passed through to the configuration of interest. 
 
