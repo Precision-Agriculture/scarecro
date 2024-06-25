@@ -1,19 +1,16 @@
-from datetime import datetime
-import pytz
-import psutil
-import re
-import subprocess
 import time 
-#Help from here: https://stackoverflow.com/questions/276052/how-to-get-current-cpu-and-ram-usage-in-python
-#https://stackoverflow.com/questions/42471475/fastest-way-to-get-system-uptime-in-python-in-linux
+import picamera
+import datetime
+import os
+#from PIL import ImageFont, ImageDraw, Image
+from PIL import Image
 import logging
-import sys 
 
 sys.path.append("../scarecro")
 import system_object
 
 
-class UnderlyingSystem():
+class Camera():
     """
     Driver for Getting Underlying System Info .
     """
@@ -133,6 +130,6 @@ class UnderlyingSystem():
         pass 
     
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
-    return UnderlyingSystem(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
+    return Camera(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
 
          
