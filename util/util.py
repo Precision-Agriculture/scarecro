@@ -88,9 +88,9 @@ def forward_backward_map_additional_info(addresses):
     Or a list of dictionaries of this form
     Creates a dictionary that maps the addresses' 
     additional info forward and backward
-    dict[keyword][keyword] = address_name
+    dict[keyword]["value"]][keyword] = address_name
     and
-    dict[keyword][address_name] = [value]
+    dict[keyword]["address_name"][address_name] = [value]
     """
     if isinstance(addresses, list):
         address_dictionary = {}
@@ -102,6 +102,6 @@ def forward_backward_map_additional_info(addresses):
         #Forwards and backwards map the additional info. 
         for key, value in add_info.items():
             mapping_dict[key] = {}
-            mapping_dict[key][key] = address_name
-            mapping_dict[key][address_name] = value 
+            mapping_dict[key]["value"][value] = address_name
+            mapping_dict[key]["address_name"][address_name] = value 
     return mapping_dict 

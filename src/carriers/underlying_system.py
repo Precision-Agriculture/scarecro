@@ -79,7 +79,7 @@ class UnderlyingSystem():
             for address_name in address_names:
                     #Find the function 
                     #function_name = self.address_key_mapping.get(address_name, None)
-                    function_name = self.mapping_dict["function"][address_name]
+                    function_name = self.mapping_dict["function"]["address_name"][address_name]
                     print("Function name", function_name)
                     if function_name == "status_reading": 
                         reading = self.status_reading()

@@ -37,7 +37,7 @@ class Camera():
 
 
     def create_folders(self): 
-        for address_name, folder in address_key_mapping.items():
+        for address_name, folder in self.mapping_dict["folder"]["address_name"].items():
             #Create the folder
             make_path = f"{self.base_path}/{folder}/"
             if not os.path.exists(make_path):
@@ -63,7 +63,7 @@ class Camera():
         new_dict = {}
         logging.info("Taking picamera picture(s)")
         #Get the save path 
-        folder = self.mapping_dict["folder"][address_name]
+        folder = self.mapping_dict["folder"]["address_name"][address_name]
         save_path = f"{self.base_path}/{folder}/"
         camera = picamera.PiCamera()
         camera.exposure_mode = "auto"
@@ -105,7 +105,7 @@ class Camera():
         """
         for address_name in address_names:
             try:
-                camera_type = self.mapping_dict["camera_type"][address_name]
+                camera_type = self.mapping_dict["camera_type"]["value"][address_name]
                 if camera_type == "picamera":
                     reading = self.take_picam_picture(address_name)
                     if reading:
