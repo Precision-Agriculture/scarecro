@@ -101,7 +101,7 @@ def forward_backward_map_additional_info(addresses):
         add_info = address_config.get("additional_info", {})
         #Forwards and backwards map the additional info. 
         for key, value in add_info.items():
-            mapping_dict[key] = {}
+            mapping_dict[key] = {"value": {}, "address_name": {}}
             mapping_dict[key]["value"][value] = address_name
-            mapping_dict[key]["address_name"][address_name] = value 
+            mapping_dict[key]["address_name"][address_name] = value
     return mapping_dict 
