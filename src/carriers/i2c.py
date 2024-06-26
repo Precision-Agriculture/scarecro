@@ -129,7 +129,7 @@ class BMP280:
                              2000: 0b110,
                              4000: 0b111})),
                 BitField('filter', 0b00011100),                   # Controls the time constant of the IIR filter
-                BitField('spi3w_en', 0b0000001, read_only=True),  # Enable 3-wire SPI interface when set to 1. IE: Don't set this bit!
+                BitField('spi3w_en', 0b0000001, read_only=True),  # EnableBMP280 3-wire SPI interface when set to 1. IE: Don't set this bit!
             )),
             Register('DATA', 0xF7, fields=(
                 BitField('temperature', 0x000000FFFFF0),
@@ -255,7 +255,6 @@ class I2C():
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_configs = message_configs.copy()
-        self.init_device_classes()
         #Create the bus 
         try:
             from smbus2 import SMBus
