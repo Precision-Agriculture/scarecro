@@ -11,6 +11,7 @@ import sys
 
 sys.path.append("../scarecro")
 import system_object
+import util.util as util 
 
 
 class UnderlyingSystem():
@@ -28,24 +29,8 @@ class UnderlyingSystem():
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_configs = message_configs.copy()
-        self.create_mappings("function")
-
-    def create_mappings(self, key):
-        """
-        Map the function reader to the address name 
-        And vice versa 
-        """
-        key_address_mapping = {}
-        address_key_mapping = {}
-        all_addresses = {**self.send_addresses, **self.receive_addresses}
-        for address_name, address_config in all_addresses.items():
-            add_info = address_config.get("additional_info", {})
-            key_val = add_info.get("function", None)
-            key_address_mapping[key_val] = address_name
-            address_key_mapping[address_name] = key_val
-        self.key_address_mapping = key_address_mapping
-        self.address_key_mapping = address_key_mapping
-
+        #Create a mapping dictionary from the additional info 
+        self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
 
     def add_id_to_reading(self, reading, address_name):
         """
@@ -93,7 +78,8 @@ class UnderlyingSystem():
             #For each address
             for address_name in address_names:
                     #Find the function 
-                    function_name = self.address_key_mapping.get(address_name, None)
+                    #function_name = self.address_key_mapping.get(address_name, None)
+                    function_name = self.mapping_dict["function"][address_name]
                     print("Function name", function_name)
                     if function_name == "status_reading": 
                         reading = self.status_reading()

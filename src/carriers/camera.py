@@ -8,7 +8,7 @@ import logging
 
 sys.path.append("../scarecro")
 import system_object
-
+import util.util as util 
 
 class Camera():
     """
@@ -25,24 +25,22 @@ class Camera():
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_configs = message_configs.copy()
-        self.create_mappings("function")
+        self.id = self.config.get("id", "default")
 
-    def create_mappings(self, key):
-        """
-        Map the function reader to the address name 
-        And vice versa 
-        """
-        key_address_mapping = {}
-        address_key_mapping = {}
-        all_addresses = {**self.send_addresses, **self.receive_addresses}
-        for address_name, address_config in all_addresses.items():
-            add_info = address_config.get("additional_info", {})
-            key_val = add_info.get("function", None)
-            key_address_mapping[key_val] = address_name
-            address_key_mapping[address_name] = key_val
-        self.key_address_mapping = key_address_mapping
-        self.address_key_mapping = address_key_mapping
+        #Figure out file stuff 
+        file_path = os.path.abspath(os.getcwd())
+        self.base_path = f"{file_path}/generated_files/"
+        #Create a mapping dictionary from the additional info 
+        self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
+        self.create_folders()
 
+
+    def create_folders(self): 
+        for address_name, folder in address_key_mapping.items():
+            #Create the folder
+            make_path = f"{self.base_path}/{folder}/"
+            if not os.path.exists(make_path):
+                os.makedirs(make_path)
 
     def add_id_to_reading(self, reading, address_name):
         """
@@ -55,71 +53,67 @@ class Camera():
         msg_id = msg_config.get("id_field", "id")
         reading[msg_id] = self.config.get("id", "default")
         return reading 
-        
 
-    def status_reading(self):
-        #Need to replace this with a system call - or else configured in the addresses?
-        #Make new system keyword substitution - system_id 
+    def take_picam_picture(self, address_name):
+        """
+        Takes a picamera picture and generates a reading
+        with the image information 
+        """
         new_dict = {}
+        logging.info("Taking picamera picture(s)")
+        #Get the save path 
+        folder = self.mapping_dict["folder"][address_name]
+        save_path = f"{self.base_path}/{folder}/"
+        camera = picamera.PiCamera()
+        camera.exposure_mode = "auto"
         try:
+            #Take the picture 
+            resolution = [1920, 1080]
+            camera.resolution = (1920, 1080)
+            # Camera warm-up time
+            time.sleep(2)
             utc_curr_time = datetime.now(tz=pytz.UTC)
-            time_string = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
-            new_dict["time"] = time_string
-            new_dict["cpu_usage"] = psutil.cpu_percent()
-            new_dict["memory_free"] = round(psutil.virtual_memory().available*100/psutil.virtual_memory().total, 2)
+            file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+            file_day = datetime.datetime.now().strftime("%Y-%m-%d")
+            picture_folder_save_path = f"{save_path}/{str(file_day)}/"
+            os.makedirs(picture_folder_save_path, exist_ok=True)
+            #Save filename as {datetime}_{id}_{camera_type}.jpg 
+            picture_name = f"{picture_folder_save_path}{file_date}_{self.id}_picamera.jpg"
+            camera.capture(picture_name)
+            #Generate the reading 
+            new_dict["image_name"] = picture_name
+            new_dict["image_resolution"] = resolution
+            new_dict["time"] = file_date    
+        except Exception as e:
+            logging.error("Could not take picamera Picture", exc_info=True)
+        finally:
             try:
-                err, pitemp = subprocess.getstatusoutput("vcgencmd measure_temp")
-                temp = re.search(r'-?\d.?\d*', pitemp)
-                tempformatted = float(temp.group())
-                #Internal Pi Temperature 
-                new_dict["internal_temp"] = round(tempformatted, 1)
+                camera.close()
             except Exception as e:
-                logging.error("Could not get internal temp", exc_info=True)
-            #uptime
-            uptime = time.time() - psutil.boot_time()
-            new_dict["uptime"] = round(uptime, 2)
-            logging.info(f"Gateway Stats Reading: {new_dict}")
-        except Exception as e:
-            logging.error("Could not process gateway stats reading", exc_info=True)
-            new_dict = {}
-        return new_dict 
+                logging.error("Picamera Close Failed", exc_info=True)
+        return new_dict
 
-
-    def process_readings(self, address_names):
-        try:
-            #For each address
-            for address_name in address_names:
-                    #Find the function 
-                    function_name = self.address_key_mapping.get(address_name, None)
-                    print("Function name", function_name)
-                    if function_name == "status_reading": 
-                        reading = self.status_reading()
-                        #Add the id 
-                        reading = self.add_id_to_reading(reading, address_name)
-                        enveloped_message = system_object.system.envelope_message(reading, address_name)
-                        system_object.system.post_messages(enveloped_message, address_name)
-        except Exception as e:
-            logging.error(f"Issue processing readings for underlying system {e}")
+    #Need to add a cleaning picture task 
+   
 
     def receive(self, address_names, duration):
         """
         Takes in the address names and the duration
-        For this driver, the duration will pretty much always be 'always'
-        You could potentally define other behavior, like listening 
-        for a set amount of time.  
+        For this driver, duration should not be 'always'
+        This function will NOT keep itself alive 
         """
-        if duration == "always":
-            while True:
-                try:
-                    self.process_readings(address_names)
-                    #Default time between tries 
-                    time.sleep(300)
-                except Exception as e:
-                    logging.error(f"Issue processing readings ('always' duration) for underlying system {e}")
-                    #Wait a bit before trying again 
-                    time.sleep(300)    
-        else:
-            self.process_readings(address_names)
+        for address_name in address_names:
+            try:
+                camera_type = self.mapping_dict["camera_type"][address_name]
+                if camera_type == "picamera":
+                    reading = self.take_picam_picture(address_name)
+                    if reading:
+                        reading = self.add_id_to_reading(reading, address_name)
+                        enveloped_message = system_object.system.envelope_message(reading, address_name)
+                        system_object.system.post_messages(enveloped_message, address_name)
+            except Exception as e: 
+                logging.error(f"Could not take process image for address {address_name}", exc_info=True)
+
             
     def send(self, address_names, duration, entry_ids=[]):
         """
@@ -132,4 +126,6 @@ class Camera():
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return Camera(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
 
-         
+
+
+       

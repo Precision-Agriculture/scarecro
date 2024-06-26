@@ -72,13 +72,36 @@ def convert_string_to_datetime(time_string):
     return the_time 
 
 
-#Might want to override the time field there. 
-def envelope_message(msg_id, time, message_type, message):
-    envelope_dict = {
-        "msg_id": msg_id,
-        "msg_time": time,
-        "msg_type": message_type,
-        "msg_content": message
-    }
-    return envelope_dict.copy()
+# #Might want to override the time field there. 
+# def envelope_message(msg_id, time, message_type, message):
+#     envelope_dict = {
+#         "msg_id": msg_id,
+#         "msg_time": time,
+#         "msg_type": message_type,
+#         "msg_content": message
+#     }
+#     return envelope_dict.copy()
 
+def forward_backward_map_additional_info(addresses):
+    """
+    Takes in a dictionary address_name: address_config 
+    Or a list of dictionaries of this form
+    Creates a dictionary that maps the addresses' 
+    additional info forward and backward
+    dict[keyword][keyword] = address_name
+    and
+    dict[keyword][address_name] = [value]
+    """
+    if isinstance(addresses, list):
+        address_dictionary = {}
+        for sub_address in addresses:
+            address_dictionary = {**address_dictionary, **sub_address}
+    mapping_dict = {} 
+    for address_name, address_config in address_dictionary.items():
+        add_info = address_config.get("additional_info", {})
+        #Forwards and backwards map the additional info. 
+        for key, value in add_info.items():
+            mapping_dict[key] = {}
+            mapping_dict[key][key] = address_name
+            mapping_dict[key][address_name] = value 
+    return mapping_dict 

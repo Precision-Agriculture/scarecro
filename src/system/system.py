@@ -359,8 +359,6 @@ class System:
         return_val = self.get_address_mappings_from_config(return_val)
         return return_val
 
-   
-
     ########################## Messages ###############################
     def run_messages_through_handler(self, message_type, messages, address):
         """
