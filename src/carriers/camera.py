@@ -30,7 +30,7 @@ class Camera():
 
         #Figure out file stuff 
         file_path = os.path.abspath(os.getcwd())
-        self.base_path = f"{file_path}/generated_files/"
+        self.base_path = f"{file_path}/generated_data/"
         #Create a mapping dictionary from the additional info 
         self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
         self.create_folders()
@@ -105,7 +105,7 @@ class Camera():
         """
         for address_name in address_names:
             try:
-                camera_type = self.mapping_dict["camera_type"]["value"][address_name]
+                camera_type = self.mapping_dict["camera_type"]["address_name"][address_name]
                 if camera_type == "picamera":
                     reading = self.take_picam_picture(address_name)
                     if reading:
