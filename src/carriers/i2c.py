@@ -84,7 +84,7 @@ class BMP280:
         self._i2c_dev = i2c_dev
         self.chip_id = 0x58
         self.altitude = altitude 
-        self._bmp280 = Device(I2C_ADDR, i2c_dev=self._i2c_dev, bit_width=8, registers=(
+        self._bmp280 = Device(i2c_addr, i2c_dev=self._i2c_dev, bit_width=8, registers=(
             Register('CHIP_ID', 0xD0, fields=(
                 BitField('id', 0xFF),
             )),
