@@ -6,6 +6,7 @@ import os
 from PIL import Image
 import logging
 
+import sys 
 sys.path.append("../scarecro")
 import system_object
 import util.util as util 
