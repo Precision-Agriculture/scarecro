@@ -255,7 +255,7 @@ class I2C():
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_configs = message_configs.copy()
-        self.create_mappings("function")
+        self.init_device_classes()
         #Create the bus 
         try:
             from smbus2 import SMBus
