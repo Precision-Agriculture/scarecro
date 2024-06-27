@@ -10,7 +10,7 @@ from bleak import BleakScanner, BleakClient
 
 
 #Help from the documentation here: https://www.eclipse.org/paho/index.php?page=clients/python/docs/index.php#multiple
-
+#We can probably make this a lot better! 
 
 class BLE():
     def __init__(self, config, send_addresses, receive_addresses, message_configs):

@@ -14,7 +14,7 @@ import src.system.system as system_class
 system_config = {
     "id": "test_device",
     "addresses": [
-        "picamera_in"
+        "tempest_in"
     ]
 }
 system_object.system = system_class.return_object(system_config=system_config)
@@ -34,4 +34,3 @@ while True:
     pass 
 
 #system_object.print_routing_table()
-#Has NOT passed yet!!! 

@@ -8,7 +8,7 @@ source: python source code file name where the task will be implemented.
 
 function: the task function to be run 
 
-arguments: a diciontary of keyword arguments to the task function, if applicable. Can pass in an empty dictionary, otherwise. 
+arguments: a dictionary of keyword arguments to the task function, if applicable. Can pass in an empty dictionary, otherwise. 
 
 duration: How often a task should be run. a number in seconds, or "always" or "as_needed", or "on_message". If "on_message", you will need to be have an additional key, "message_type". 
 

@@ -52,10 +52,12 @@ class System:
         #Init the scheduler 
         self.init_scheduler()
         #Get carrier schedulers 
+        #self.start_scheduler()
+        #self.print_scheduled_jobs()
+
+    def start_system(self):
         self.start_scheduler()
         self.print_scheduled_jobs()
-
-
         
     def init_post_office_configs(self):
         """
@@ -75,9 +77,12 @@ class System:
         active_addresses = self.system_config.get("addresses", [])
         #Get tasks
         active_tasks = self.system_config.get("tasks", [])
-        for address in active_addresses:
-            address_content = self.import_config("addresses", address, "address")
-            self.addresses[address] = address_content
+        #import addresses 
+        #OLD - check, marked, change 
+        # for address in active_addresses:
+        #     address_content = self.import_config("addresses", address, "address")
+        #     self.addresses[address] = address_content
+        self.import_addresses(active_addresses)
         #Get message configs
         self.messages = self.map_addresses(self.messages, self.addresses, "message_type")
         for message in self.messages.keys():
@@ -98,6 +103,7 @@ class System:
 
     # Scheduler Helpers -- from SkyWeather2, Switchdoc Labs 
     #Check to see if this is actually going to work 
+
     def ap_my_listener(self, event):
         """
         Event exception listener 
@@ -238,6 +244,36 @@ class System:
         content = self.inheritance(path_name, module_name, attribute, content)
         content = self.substitution_content(module_name, content)
         return content
+
+
+    def complete_content(self, path_name, module_name, attribute, content):
+        content = self.inheritance(path_name, module_name, attribute, content)
+        content = self.substitution_content(module_name, content)
+        return content
+
+    def import_addresses(self, active_addresses):
+        """
+        Specific import for addresses, since multiple message types
+        Can throw off an address import 
+        """
+        path_name = f"configs.addresses"
+        for address_name in active_addresses:
+            #Get the content
+            content = self.get_import_content(path_name, address_name, "address")
+            message_type = content.get("message_type", None)
+            #If we have multiple messages in one address, break them all out into separate messages
+            #Note that you can't inherit from a an address with multiple messages 
+            if isinstance(message_type, list):
+                for sub_message_type in message_type:
+                    sub_address_name = f"{address_name}_{sub_message_type}"
+                    sub_content = content.copy()
+                    sub_content["message_type"] = sub_message_type
+                    sub_content = self.complete_content(path_name, sub_address_name, "address", sub_content)
+                    self.addresses[sub_address_name] = sub_content
+            else:
+                content = self.complete_content(path_name, address_name, "address", content)
+                self.addresses[address_name] = content
+
 
     def return_default_mapping_dict(self):
         """
@@ -788,9 +824,11 @@ class System:
         Intializes the task object and adds it to 
         the "object" field of task dictionary 
         """
-        #Get the config for the handler
+        #Get the config for the tasks
         task_dict = self.tasks.get(task_name, {})
         #This is where we need to get the init info for the actual driver 
+
+        #CHANGE HERE - CHECK!! 
         task_path = "src.tasks"
         source_name = task_dict.get("source", task_name)
 

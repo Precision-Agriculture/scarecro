@@ -34,6 +34,7 @@ system_object.system.print_configs(["addresses", "messages", "carriers", "handle
 
 # #Some other helpful prints
 system_object.system.print_scheduler_dict()
+system_object.system.start_scheduler()
 # system_object.system.print_on_message_routing_dict()
 
 prev = time.time()

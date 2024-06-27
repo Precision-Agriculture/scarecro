@@ -6,6 +6,8 @@ import paho.mqtt.client as paho
 from paho import mqtt
 sys.path.append("../scarecro")
 import system_object
+import util.util as util 
+
 #Help from the documentation here: https://www.eclipse.org/paho/index.php?page=clients/python/docs/index.php#multiple
 
 
@@ -50,39 +52,43 @@ class MQTT_Client():
             self.client.username_pw_set(self.mqtt_username, self.mqtt_password)
         #Set up client
         self.client.on_connect = self.on_connect
-        self.topic_address_mappings()
+        #self.topic_address_mappings()
         self.sent_entries = {}
         self.loop_forever = False
         self.loop_start=False
+
+        self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
         #Set up message definitions for looking up messages 
 
 
-    def topic_address_mappings(self):
-        """
-        Takes no arguments 
-        Use addresses to create a topic-address mapping dictionary
-        And an address-topic mapping dictionary 
-        """
-        topic_address_mapping = {}
-        address_topic_mapping = {} 
-        all_addresses = {**self.send_addresses, **self.receive_addresses}
-        #For every address, map it to a topic and vice versa 
-        for address_name, address_config in all_addresses.items():
-            additional_info = address_config.get("additional_info", {})
-            topic = additional_info.get("topic", None)
-            topic_address_mapping[topic] = address_name
-            address_topic_mapping[address_name] = topic
-        self.topic_address_mapping = topic_address_mapping
-        self.address_topic_mapping = address_topic_mapping
+    # def topic_address_mappings(self):
+    #     """
+    #     Takes no arguments 
+    #     Use addresses to create a topic-address mapping dictionary
+    #     And an address-topic mapping dictionary 
+    #     """
+    #     topic_address_mapping = {}
+    #     address_topic_mapping = {} 
+    #     all_addresses = {**self.send_addresses, **self.receive_addresses}
+    #     #For every address, map it to a topic and vice versa 
+    #     for address_name, address_config in all_addresses.items():
+    #         additional_info = address_config.get("additional_info", {})
+    #         topic = additional_info.get("topic", None)
+    #         topic_address_mapping[topic] = address_name
+    #         address_topic_mapping[address_name] = topic
+    #     self.topic_address_mapping = topic_address_mapping
+    #     self.address_topic_mapping = address_topic_mapping
 
     def check_topic_map(self, topic_name):
         """
         String matches topic names 
         NEED TO CHECK - MARKED 
         """
-        address_map = self.topic_address_mapping.get(topic_name, None)
+        #address_map = self.topic_address_mapping.get(topic_name, None)
+        address_map = self.mapping_dict["topic"]["value"].get(topic_name, None)
         if address_map == None:
-            for key, value in self.topic_address_mapping.items():
+            #for key, value in self.topic_address_mapping.items():
+            for key, value in self.mapping_dict["topic"]["value"].items():
                 if key in topic_name:
                     address_map = value
         return address_map 
@@ -124,7 +130,9 @@ class MQTT_Client():
         """
         subscriptions = []
         for address_name in addresses:
-            subscriptions.append(f"{self.address_topic_mapping.get(address_name, None)}/#")
+            #subscriptions.append(f"{self.address_topic_mapping.get(address_name, None)}/#")
+            topic = self.mapping_dict["topic"]["address_name"].get(address_name, None)
+            subscriptions.append(f"{topic}/#")
 
         #MARKED - DEBUG - CHANGE
         # print("SUBSCRIPTIONS")
@@ -264,7 +272,8 @@ class MQTT_Client():
         for address_name in address_names:
             try:
                 #Look up the topic
-                topic = self.address_topic_mapping.get(address_name, None)
+                #topic = self.address_topic_mapping.get(address_name, None)
+                topic = self.mapping_dict["topic"]["address_name"].get(address_name, None)
                 if topic:
                     #Get the messages
                     messages = system_object.system.pickup_messages(address_name, entry_ids=entry_ids)

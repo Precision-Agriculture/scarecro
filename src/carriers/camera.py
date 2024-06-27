@@ -55,6 +55,25 @@ class Camera():
         reading[msg_id] = self.config.get("id", "default")
         return reading 
 
+    def generate_picture_name_and_reading(self, save_path, camera_type):
+        """
+        Takes the name of the camera and the base save path 
+        Returns the full filepath of the image name and a basic reading dictionary
+        With the image name and timestamp. 
+        """
+        new_dict = {}
+        utc_curr_time = datetime.now(tz=pytz.UTC)
+        file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        file_day = datetime.datetime.now().strftime("%Y-%m-%d")
+        picture_folder_save_path = f"{save_path}/{str(file_day)}/"
+        os.makedirs(picture_folder_save_path, exist_ok=True)
+        #Save filename as {datetime}_{id}_{camera_type}.jpg 
+        picture_name = f"{picture_folder_save_path}{file_date}-{self.id}-{camera_type}.jpg"
+        #Generate the reading 
+        new_dict["image_name"] = picture_name
+        new_dict["time"] = file_date   
+        return picture_name, new_dict
+
     def take_picam_picture(self, address_name):
         """
         Takes a picamera picture and generates a reading
@@ -73,29 +92,36 @@ class Camera():
             camera.resolution = (1920, 1080)
             # Camera warm-up time
             time.sleep(2)
-            utc_curr_time = datetime.now(tz=pytz.UTC)
-            file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
-            file_day = datetime.datetime.now().strftime("%Y-%m-%d")
-            picture_folder_save_path = f"{save_path}/{str(file_day)}/"
-            os.makedirs(picture_folder_save_path, exist_ok=True)
-            #Save filename as {datetime}_{id}_{camera_type}.jpg 
-            picture_name = f"{picture_folder_save_path}{file_date}_{self.id}_picamera.jpg"
+            picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "picamera")
             camera.capture(picture_name)
             #Generate the reading 
-            new_dict["image_name"] = picture_name
             new_dict["image_resolution"] = resolution
-            new_dict["time"] = file_date    
         except Exception as e:
-            logging.error("Could not take picamera Picture", exc_info=True)
+            logging.error("Could not take picamera image", exc_info=True)
         finally:
             try:
                 camera.close()
             except Exception as e:
-                logging.error("Picamera Close Failed", exc_info=True)
+                logging.error("picamera Close Failed", exc_info=True)
+        return new_dict
+
+    def take_pi_hawk_eye_picture(self, address_name):
+        new_dict = {}
+        logging.info("Taking pi_hawk_eye picture(s)")
+        #Get the save path 
+        folder = self.mapping_dict["folder"]["address_name"][address_name]
+        save_path = f"{self.base_path}/{folder}/"
+        try:
+            picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "pi_hawk_eye")
+            #Generate the reading 
+            new_dict["image_resolution"] = [4626, 3472]
+            command = "libcamera-still -t 5000 –autofocus –width 4626 –height 3472 -o "+picture_name
+            os.system(command)
+        except Exception as e:
+            logging.error("Could not take pi_hawk_eye image", exc_info=True)
         return new_dict
 
     #Need to add a cleaning picture task 
-   
 
     def receive(self, address_names, duration):
         """
@@ -106,12 +132,15 @@ class Camera():
         for address_name in address_names:
             try:
                 camera_type = self.mapping_dict["camera_type"]["address_name"][address_name]
+                reading = {}
                 if camera_type == "picamera":
                     reading = self.take_picam_picture(address_name)
-                    if reading:
-                        reading = self.add_id_to_reading(reading, address_name)
-                        enveloped_message = system_object.system.envelope_message(reading, address_name)
-                        system_object.system.post_messages(enveloped_message, address_name)
+                elif camera_type = "pi_hawk_eye":
+                    reading = self.take_pi_hawk_eye_picture(address_name)
+                if reading:
+                    reading = self.add_id_to_reading(reading, address_name)
+                    enveloped_message = system_object.system.envelope_message(reading, address_name)
+                    system_object.system.post_messages(enveloped_message, address_name)
             except Exception as e: 
                 logging.error(f"Could not take process image for address {address_name}", exc_info=True)
 
@@ -126,7 +155,3 @@ class Camera():
     
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return Camera(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
-
-
-
-       

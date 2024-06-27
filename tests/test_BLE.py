@@ -27,6 +27,7 @@ print("Scheduler Dictionary")
 system_object.system.print_scheduler_dict()
 print("On Message Routing Dictionary")
 system_object.system.print_on_message_routing_dict()
+system_object.system.start_scheduler()
 
 prev = time.time()
 curr = time.time()
