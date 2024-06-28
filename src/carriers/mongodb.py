@@ -39,6 +39,7 @@ class Mongodb():
         self.map_collections()
         if self.persistent_connection:
             self.connect()
+        logging.info("Initialized MongoDB Carrier")
 
     def map_collections(self):
         """

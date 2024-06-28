@@ -80,11 +80,11 @@ class UnderlyingSystem():
                     #Find the function 
                     #function_name = self.address_key_mapping.get(address_name, None)
                     function_name = self.mapping_dict["function"]["address_name"][address_name]
-                    print("Function name", function_name)
                     if function_name == "status_reading": 
                         reading = self.status_reading()
                         #Add the id 
                         reading = self.add_id_to_reading(reading, address_name)
+                        logging.info(f"Underlying System Reading {reading}")
                         enveloped_message = system_object.system.envelope_message(reading, address_name)
                         system_object.system.post_messages(enveloped_message, address_name)
         except Exception as e:

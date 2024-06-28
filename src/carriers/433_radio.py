@@ -32,9 +32,14 @@ class Radio_433():
         self.message_configs = message_configs.copy()
         self.create_mappings()
         self.cmd = ['/usr/local/bin/rtl_433', '-q', '-M', 'level', '-F', 'json']
+        logging.info("Initialized 433_radio carrier")
 
 
     def create_mappings(self):
+        """
+        Mappings here instead of using system function
+        Due to the possibility of mutliple string matches 
+        """
         matches_address_mapping = {}
         address_matches_mapping = {}
         driver_address_mapping = {}
@@ -57,6 +62,9 @@ class Radio_433():
 
 
     def make_command(self, address_names):
+        """
+        Creates the command to run the 433 driver 
+        """
         new_cmd = self.cmd.copy()
         for address_name in address_names:
             driver = self.address_driver_mapping.get(address_name, None)
@@ -126,15 +134,12 @@ class Radio_433():
             for potential_match in list(self.matches_address_mapping.keys()):
                 if sLine.find(potential_match) != -1:
                     #debug
-                    print("Processing sample")
-                    print(sLine)
+                    logging.debug(f"Processing sample {sLine}")
                     address_name = self.matches_address_mapping.get(potential_match, None)
                     if address_name:
                         reading_dict = sLine
                         enveloped_message = system_object.system.envelope_message(json.loads(sLine), address_name)
                         system_object.system.post_messages(enveloped_message, address_name)
-                        #Debug
-                        system_object.system.print_message_entries_dict()
                     break 
         except Exception as e:
             logging.error(f'Could not process sLine in radio_433 protocol', exc_info=True)
@@ -178,8 +183,8 @@ class Radio_433():
                 prev_time = time.time()
                 curr_time = time.time()
                 time_out = curr_time-prev_time
-                #Heuristic - could have this configured 
-                while time_out < 20.0:
+                #Heuristic listening time - could have this configured 
+                while time_out < 50.0:
                     self.listen()
                     curr_time = time.time()
                     time_out = curr_time-prev_time

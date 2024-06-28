@@ -34,7 +34,7 @@ class Camera():
         #Create a mapping dictionary from the additional info 
         self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
         self.create_folders()
-
+        logging.info("Initialized camera carrier")
 
     def create_folders(self): 
         for address_name, folder in self.mapping_dict["folder"]["address_name"].items():
@@ -96,6 +96,7 @@ class Camera():
             camera.capture(picture_name)
             #Generate the reading 
             new_dict["image_resolution"] = resolution
+            new_dict["camera_type"] = "picamera"
         except Exception as e:
             logging.error("Could not take picamera image", exc_info=True)
         finally:
@@ -115,7 +116,8 @@ class Camera():
             picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "pi_hawk_eye")
             #Generate the reading 
             new_dict["image_resolution"] = [4626, 3472]
-            command = "libcamera-still -t 5000 –autofocus –width 4626 –height 3472 -o "+picture_name
+            new_dict["camera_type"] = "pi_hawk_eye"
+            command = f"libcamera-still -t 5000 –autofocus –width 4626 –height 3472 -o {picture_name}"
             os.system(command)
         except Exception as e:
             logging.error("Could not take pi_hawk_eye image", exc_info=True)
@@ -139,6 +141,7 @@ class Camera():
                     reading = self.take_pi_hawk_eye_picture(address_name)
                 if reading:
                     reading = self.add_id_to_reading(reading, address_name)
+                    logging.info(f"Took picture! Reading {reading}")
                     enveloped_message = system_object.system.envelope_message(reading, address_name)
                     system_object.system.post_messages(enveloped_message, address_name)
             except Exception as e: 

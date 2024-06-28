@@ -16,7 +16,6 @@ class RenogyBT:
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_definitions = message_configs.copy()
-        print("Initing renogy bt handler")
         self.CHARGING_STATE = {
             0: 'deactivated',
             1: 'activated',
@@ -36,6 +35,7 @@ class RenogyBT:
             3: "READ",
             6: "WRITE"
         }
+        logging.info("Initialized renogy bt handler")
 
     def Bytes2Int(self, bs, offset, length):
         """

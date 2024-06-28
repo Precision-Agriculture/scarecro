@@ -25,7 +25,7 @@ class DataGatorSensors:
         self.receive_addresses = receive_addresses.copy()
         self.message_definitions = message_configs.copy()
         #Debug Step 
-        print("Initing data gator sensors handler")
+        logging.info("Initing Data Gator sensors handler")
     
 
     def envelope_id_override(self, message_envelope, message_content): 
@@ -244,6 +244,7 @@ class DataGatorSensors:
                     #logging.debug(f"Error processing weather rack message")
                     return [] 
                 message = self.envelope_id_override(message, new_message)
+                logging.info(f"{message_type} Reading from Datagator: {message}")
             return messages
         except Exception as e:
             logging.error(f"Could not process switchdoc sensor messages: {e}")

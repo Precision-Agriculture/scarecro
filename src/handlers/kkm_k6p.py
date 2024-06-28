@@ -21,7 +21,7 @@ class KKM_K6P:
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_definitions = message_configs.copy()
-        print("Initing kkm_k6p handler")
+        logging.info("Initing kkm_k6p handler")
         
 
     def bytes_to_fixed_point_88(self, bytes_object, endian):
@@ -35,10 +35,6 @@ class KKM_K6P:
 
     def parse_message(self, message_packet):
         message = message_packet.get("packet", {})
-        #print("DEVICE")
-        #print(device)
-        #print("Advertising Service Data")
-        #print("Length", len(message))
         final_message = {}
         #message = bytearray(message)
         #message = list(message)
@@ -66,8 +62,6 @@ class KKM_K6P:
         final_message["SENSOR_NAME"] = message_packet.get("name", None)
         final_message["id"] = message_packet.get("mac_address", None)
         final_message["time"] = util.get_today_date_time_utc()
-        print("FINAL MESSAGE")
-        print(final_message)
         return final_message
 
 
@@ -76,27 +70,16 @@ class KKM_K6P:
         This function takes in a message_type and a list of messages
         It returns a list of messages 
         """
-        print("PROCESSING KKM MESSAGE")
         for message in messages:
             sub_message = message.get("msg_content", {})
             new_message = self.parse_message(sub_message)
+            logging.info(f"KKM Message {new_message}")
             message["msg_content"] = new_message
             #Envelope ovverride 
             #Once ID is parsed out, replace it in the envelope
             message["msg_id"] = new_message.get("id", "default")
         return messages 
         
-    # def process_out(self, message_type, messages):
-    #     """
-    #     This function takes in a message_type and a list of messages
-    #     It returns a list of messages 
-    #     """
-    #     for message in messages:
-    #         sub_message = message.get("msg_content", {})
-    #         sub_message["processed_by_fake_message_handler_out"] = True
-    #     return messages 
-        
-
 
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return KKM_K6P(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)

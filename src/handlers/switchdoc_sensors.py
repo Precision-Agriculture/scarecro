@@ -23,8 +23,7 @@ class SwitchdocSensors:
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_definitions = message_configs.copy()
-        #Debug Step 
-        print("Initing switchdoc sensors handler")
+        logging.info("Initialized switchdoc sensors handler")
     
 
     def envelope_id_override(self, message_envelope, message_content): 

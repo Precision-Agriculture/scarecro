@@ -59,25 +59,8 @@ class MQTT_Client():
 
         self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
         #Set up message definitions for looking up messages 
+        logging.info("Initialized mqtt carrier")
 
-
-    # def topic_address_mappings(self):
-    #     """
-    #     Takes no arguments 
-    #     Use addresses to create a topic-address mapping dictionary
-    #     And an address-topic mapping dictionary 
-    #     """
-    #     topic_address_mapping = {}
-    #     address_topic_mapping = {} 
-    #     all_addresses = {**self.send_addresses, **self.receive_addresses}
-    #     #For every address, map it to a topic and vice versa 
-    #     for address_name, address_config in all_addresses.items():
-    #         additional_info = address_config.get("additional_info", {})
-    #         topic = additional_info.get("topic", None)
-    #         topic_address_mapping[topic] = address_name
-    #         address_topic_mapping[address_name] = topic
-    #     self.topic_address_mapping = topic_address_mapping
-    #     self.address_topic_mapping = address_topic_mapping
 
     def fake_print(self):
         print("Fake print - inside MQTT task")
@@ -113,17 +96,13 @@ class MQTT_Client():
         #Map it to an address
         address_name = self.check_topic_map(topic_name)
         message_body = json.loads(message.payload)
-        # print("Received Message")
-        # print(topic_name, message_body)
-        # print(address_name)
+        logging.debug(f"Received Message {topic} {message_body} {address_name}")
         if self.include_topic:
             message_body["topic"] = topic_name
         if address_name:
             #Post it
-            #MARKED - need to change to include topic list, unfortunately! 
             enveloped_message = system_object.system.envelope_message(message_body, address_name)
             system_object.system.post_messages(enveloped_message, address_name)
-            #logging.debug(system_object.system.print_message_entries_dict())
 
 
     def get_subscriptions(self, addresses):
@@ -134,13 +113,8 @@ class MQTT_Client():
         """
         subscriptions = []
         for address_name in addresses:
-            #subscriptions.append(f"{self.address_topic_mapping.get(address_name, None)}/#")
             topic = self.mapping_dict["topic"]["address_name"].get(address_name, None)
             subscriptions.append(f"{topic}/#")
-
-        #MARKED - DEBUG - CHANGE
-        # print("SUBSCRIPTIONS")
-        # print(subscriptions)
         return subscriptions
 
      #Connects to the broker. 

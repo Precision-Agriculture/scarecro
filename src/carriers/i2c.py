@@ -232,7 +232,7 @@ class BMP280:
             utc_curr_time = datetime.now(tz=pytz.UTC)
             time_string = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
             new_dict["time"] = time_string
-            #logging.info(f"BMP280 reading {new_dict}")
+            logging.info(f"BMP280 reading {new_dict}")
             return new_dict
         except:
             logging.error("processbmp2080 Unexpected error:", exc_info=True)
@@ -263,6 +263,7 @@ class I2C():
         self.bus = SMBus(1)
         #Init the device classes, if necessary
         self.init_device_classes() 
+        logging.info("Initialized i2c carrier")
 
     def init_device_classes(self): 
         #Create the bus 

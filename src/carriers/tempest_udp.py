@@ -22,6 +22,7 @@ class TempestUDP():
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_configs = message_configs.copy()
+        logging.info("Initialized Tempest UDP Carrier")
 
 
     def status_reading(self):
@@ -42,6 +43,7 @@ class TempestUDP():
                 try:
                     for address_name in address_names:
                         reading = self.status_reading()
+                        logging.info(f"Tempest UDP Reading, {reading}")
                         enveloped_message = system_object.system.envelope_message(reading, address_name)
                         system_object.system.post_messages(enveloped_message, address_name)
                     #Default time between tries 

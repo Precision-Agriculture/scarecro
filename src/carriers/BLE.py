@@ -40,6 +40,7 @@ class BLE():
         self.read_method = self.config.get("read_method", None)
         self.listening_interval = self.config.get("listening_interval", 60)
         self.create_mappings()
+        logging.info("Initialized BLE carrier")
 
     def create_mappings(self):
         """
