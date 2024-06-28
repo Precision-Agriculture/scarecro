@@ -5,6 +5,9 @@ will vary substantially by the particular carrier.
 Task configurations should have similar 
 
 source: python source code file name where the task will be implemented. 
+    If you don't have a source file, you should have a name of an ALREADY-CONFIGURED carrier or handler, and the following fields
+        "source_type": <carrier or handler>
+        "config_name": <name of the config of the carrier or handler ALREADY TIED TO AN ADDRESS>
 
 function: the task function to be run 
 

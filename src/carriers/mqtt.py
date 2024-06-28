@@ -79,6 +79,10 @@ class MQTT_Client():
     #     self.topic_address_mapping = topic_address_mapping
     #     self.address_topic_mapping = address_topic_mapping
 
+    def fake_print(self):
+        print("Fake print - inside MQTT task")
+        
+
     def check_topic_map(self, topic_name):
         """
         String matches topic names 

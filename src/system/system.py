@@ -1,5 +1,4 @@
 import sys
-
 import importlib 
 import json 
 import logging 
@@ -538,12 +537,14 @@ class System:
         #Get message id from message definition
         message_config = self.messages.get(message_type, {}).get("content")
         id_field = message_config.get("id_field", "id")
-        message_id = message_content.get(id_field)
+        time_field = message_config.get("time_field", "time")
+        message_id = message_content.get(id_field, "default")
         time = util.get_today_date_time_utc()
+        time_value = message_content.get(time_field, time)
         #Envelope it 
         enveloped_message = {
             "msg_id": message_id,
-            "msg_time": time,
+            "msg_time": time_value,
             "msg_type": message_type,
             "msg_content": message_content
         }
@@ -828,13 +829,25 @@ class System:
         task_dict = self.tasks.get(task_name, {})
         #This is where we need to get the init info for the actual driver 
 
-        #CHANGE HERE - CHECK!! 
-        task_path = "src.tasks"
-        source_name = task_dict.get("source", task_name)
-
-        task_wrapper = self.get_object(task_path, source_name, return_function="return_object")
-        task_item = task_wrapper(config=task_dict)
-        task_dict["object"] = task_item
+        #CHANGE HERE - CHECK!! MARKED 
+        #If this task is a source file in the actual tasks folder
+        if "source" in list(task_dict.keys()):
+            task_path = "src.tasks"
+            source_name = task_dict.get("source", task_name)
+            task_wrapper = self.get_object(task_path, source_name, return_function="return_object")
+            task_item = task_wrapper(config=task_dict)
+            task_dict["object"] = task_item
+        #Otherwise: 
+        else:
+            #Get the folder
+            task_item = None
+            source_type = task_dict.get("source_type", None)
+            config_name = task_dict.get("config_name", None)
+            if source_type == "carrier":
+                task_item = self.carriers.get(config_name, {}).get("object", None)
+            elif source_type == "handler":
+                task_item = self.handlers.get(config_name, {}).get("object", None)
+            task_dict["object"] = task_item 
         #Might want to think getting a return value here?
 
     def init_scheduler(self):
@@ -900,13 +913,7 @@ class System:
             else:
                 #If we do, just append the addresses
                 job_dict["arguments"].append(address_name)
-        # #Small fix        
-        # for job_id, job_dict in scheduler_dict.items():
-        #     duration = job_dict.get("duration", "as_needed")
-        #     arguments = job_dict.get("arguments", [])
-        #     arguments = [arguments, duration]
-        #     job_dict["arguments"] = arguments
-
+   
         #Next, going to schedule the tasks 
         for task_name, task_config in self.tasks.items():
             #Job ID goes - name_function_duration
@@ -916,6 +923,7 @@ class System:
             arguments = task_config.get("arguments", None)
             job_id = f"{task_name}_{function}_{duration}"
             #In case we have any tasks triggered by a message, as well 
+            #Probaby need to add message_type here as well (entry ids need to be in source)
             if duration == "on_message":
                 message_type = task_config.get("message_type", None)
                 job_list = on_message_routing_dict.get(message_type, [])
@@ -933,21 +941,6 @@ class System:
         self.scheduler_dict = scheduler_dict
         self.on_message_routing_dict = on_message_routing_dict
 
-
-    def print_scheduler_dict(self):
-        """
-        Takes no arguments
-        Prints out the scheduler dictionary 
-        """
-        print(json.dumps(self.scheduler_dict, indent=4, default=str))
-
-    def print_on_message_routing_dict(self):
-        """
-        Takes no arguments
-        Prints out the scheduler dictionary 
-        """
-        print(json.dumps(self.on_message_routing_dict, indent=4, default=str))
-
     def schedule_jobs(self):
         """
         Takes in no arguments
@@ -960,8 +953,12 @@ class System:
                 arguments = job_config.get("arguments", [])
                 if job_config.get("type", "task") == "carrier":
                    arguments = [arguments, duration]
+                #Annoying way to make sure arguments are good to go 
                 else:
-                    arguments = [arguments]
+                    if arguments == {} or arguments == []:
+                        arguments = []
+                    else:
+                        arguments = [arguments]
                 function = job_config.get("function", None)
                 #If its a seconds interval
                 if str(duration).isnumeric():
@@ -989,7 +986,19 @@ class System:
         for job in all_jobs:
             print(f"JOB ID: {job.id} | TRIGGER: {job.trigger} | NEXT_RUN: {job.next_run_time} | FUNCTION: {job.func} | ARGS: {job.args}")
 
+    def print_scheduler_dict(self):
+        """
+        Takes no arguments
+        Prints out the scheduler dictionary 
+        """
+        print(json.dumps(self.scheduler_dict, indent=4, default=str))
 
+    def print_on_message_routing_dict(self):
+        """
+        Takes no arguments
+        Prints out the scheduler dictionary 
+        """
+        print(json.dumps(self.on_message_routing_dict, indent=4, default=str))
 
     #End system class definition 
 
