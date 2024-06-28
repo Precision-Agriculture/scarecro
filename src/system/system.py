@@ -8,6 +8,11 @@ import apscheduler.events
 sys.path.append("../scarecro")
 import util.util as util 
 
+if logging.root.level > logging.DEBUG:
+    logging.getLogger('apscheduler').setLevel(logging.WARNING)
+else:
+    logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+
 class System: 
     def __init__(self, system_config=None):
         """
@@ -29,8 +34,10 @@ class System:
         """
         #Get the system config 
         if system_config:
+            logging.debug(f"Using system configuration passed in")
             self.system_config = system_config.copy()
         else:
+            logging.debug(f"Using the system configuration in the configurations folder")
             self.system_config = self.import_config("system", "system", "system")
         #Get the post office info - addresses, carriers, 
         #handlers, and messages 
@@ -43,20 +50,33 @@ class System:
         #Init the carriers
         for carrier_name in self.carriers:
             self.init_carrier(carrier_name)
-
-        #Init the tasks 
+        #Init the tasks - tasks are last because they may use
+        #handlers or carriers that already exist 
         for task_name in self.tasks:
             self.init_task(task_name)
 
         #Init the scheduler 
         self.init_scheduler()
-        #Get carrier schedulers 
-        #self.start_scheduler()
-        #self.print_scheduled_jobs()
+
+        #If debug, do some prints
+        if logging.root.level <= logging.DEBUG: 
+            logging.debug("System Configurations")
+            self.print_configs(["addresses", "messages", "carriers", "handlers"])
+            self.print_scheduler_dict()
+            self.print_on_message_routing_dict()
+        
+
 
     def start_system(self):
+        """
+        This function begins the scheduler
+        This is a separate function to allow all initializations
+        to execute in the proper order
+        """
+        logging.debug("Beginning scheduler")
         self.start_scheduler()
-        self.print_scheduled_jobs()
+        if logging.root.level <= logging.DEBUG: 
+            self.print_scheduled_jobs()
         
     def init_post_office_configs(self):
         """
@@ -76,11 +96,7 @@ class System:
         active_addresses = self.system_config.get("addresses", [])
         #Get tasks
         active_tasks = self.system_config.get("tasks", [])
-        #import addresses 
-        #OLD - check, marked, change 
-        # for address in active_addresses:
-        #     address_content = self.import_config("addresses", address, "address")
-        #     self.addresses[address] = address_content
+        #import addresses - configs, message breakup, inheritance and substitution 
         self.import_addresses(active_addresses)
         #Get message configs
         self.messages = self.map_addresses(self.messages, self.addresses, "message_type")
@@ -90,7 +106,6 @@ class System:
         self.handlers = self.map_addresses(self.handlers, self.addresses, "handler")
         for handler in self.handlers.keys():
             self.handlers[handler]["content"] = self.import_config("handlers", handler, "handler")
-
         #Get carrier configs 
         self.carriers = self.map_addresses(self.carriers, self.addresses, "carrier")
         for carrier in self.carriers.keys():
@@ -100,9 +115,7 @@ class System:
             task_content = self.import_config("tasks", task, "task")
             self.tasks[task] = task_content
 
-    # Scheduler Helpers -- from SkyWeather2, Switchdoc Labs 
-    #Check to see if this is actually going to work 
-
+    #Scheduler exception listener - SDL originally 
     def ap_my_listener(self, event):
         """
         Event exception listener 
@@ -123,7 +136,7 @@ class System:
         self.scheduler = BackgroundScheduler(thread_config)
         #for debugging
         self.scheduler.add_listener(self.ap_my_listener, apscheduler.events.EVENT_JOB_ERROR)
-
+        logging.debug("Scheduler created")
 
     #Substitution dictionary for init'ing configs 
     def make_sub_dict(self, content, name):
@@ -230,7 +243,7 @@ class System:
     #Here, perform inheritance and sensor name substitution  
     def import_config(self, config_folder, module_name, attribute):
         """
-        Specific import function for configs. Takes in the sub-config
+        General import function for configs. Takes in the sub-config
         folder, the module name within the folder, and the attribute, 
         and applies the inheritance and substitution operators to the config
 
@@ -239,13 +252,20 @@ class System:
         path_name = f"configs.{config_folder}"
         #Get the content
         content = self.get_import_content(path_name, module_name, attribute)
-        #Run inheritance on the content 
-        content = self.inheritance(path_name, module_name, attribute, content)
-        content = self.substitution_content(module_name, content)
+        #Run inheritance and substiturion on the content 
+        # content = self.inheritance(path_name, module_name, attribute, content)
+        # content = self.substitution_content(module_name, content)
+        content = self.complete_content(path_name, module_name, attribute, content)
         return content
 
 
     def complete_content(self, path_name, module_name, attribute, content):
+        """ 
+        This function runs just the inheritance and substituion operations
+        on a piece of config content 
+        Takes in: path name, module name, attribute name, and original config content
+        Returns: completed content 
+        """
         content = self.inheritance(path_name, module_name, attribute, content)
         content = self.substitution_content(module_name, content)
         return content
@@ -338,29 +358,6 @@ class System:
             return_dict[key] = value.get("content", {}) 
         return return_dict 
 
-    #Come back to this. 
-    def return_configs(self, config_type, config_names):
-        """
-        Takes in a config type and a config name 
-        config name can be a name, a list of names, or "all" 
-        Return a dictionary where the keys are configuration names
-        And the values are corresponding configurations 
-        """
-        return_val = {}
-        #Get the object we need the config from 
-        config_object = self.get_config_object_from_config_type(config_type)
-        if config_names == "all":
-            return_val = config_object.copy()
-        elif isinstance(config_names, list):
-            for sub_name in config_names: 
-                return_val[sub_name] = config_object[sub_name].copy()
-        else:
-            return_val[sub_name] = config_object[sub_name].copy()
-        #Collapse any configs that match content
-        if config_type in ["handler", "carrier", "message"]:
-            return_val = self.get_collapsed_to_content_config_dict(return_val)
-        return return_val
-
     def get_address_mappings_from_config(self, full_dict):
         """
         Takes a dictionary of key: full config pairs
@@ -412,6 +409,7 @@ class System:
                     #Run the function on it
                     handler_function = getattr(handler_object, handler_function)
                     messages = handler_function(message_type, messages)
+                    logging.debug(f"Ran {message_type} through function {handler_function} of {handler_name}")
                 except Exception as e:
                     logging.error(f"Could not process with handler message of type {message_type}", exc_info=True)
         #Return the messages 
@@ -431,16 +429,17 @@ class System:
                     #Get the function parameters and execute the function
                     job_config = self.scheduler_dict.get(job_id, {})
                     arguments = job_config.get("arguments")
-                    carrier_object = job_config.get("object", None)
-                    carrier_function = job_config.get("function", None)
-                    overall_function = getattr(carrier_object, carrier_function)
+                    triggered_object = job_config.get("object", None)
+                    triggered_function = job_config.get("function", None)
+                    overall_function = getattr(triggered_object, triggered_function)
+                    logging.debug(f"Executing {job_id} to {triggered_function} on {message_type} message with arguments {arguments}")
                     if carrier_function == "send":
                         overall_function(arguments, "on_message", entry_ids=entry_ids)
                     elif carrier_function == "receive":
                         overall_function(arguments, "on_message")
                     else:
-                        #Like from a task 
-                        overall_function(arguments)
+                        #Like from a task (need to still run entry ids, I think) #MARKED #CHANGE 
+                        overall_function(arguments, entry_ids=entry_ids)
                 except Exception as e:
                     logging.error(f"Could not run {job_id} on on_message trigger for {message_type}", exc_info=True)
 
@@ -471,17 +470,19 @@ class System:
                     sub_result = self.add_message(message_type, message)
                     if sub_result != False:
                         entry_ids.append(sub_result)
+                        logging.debug(f"Successfully added {message_type}")
                 except Exception as e:
                     logging.error(f"Could not add message of type {message_type}", exc_info=True)
             if len(entry_ids) >= 1:
                 #We were able to add at least one message 
                 result = True
+                logging.debug(f"Checking message triggers")
                 self.check_message_triggers(message_type, entry_ids=entry_ids)
         except Exception as e:
             logging.error(f"Could not post message on address {address_name}", exc_info=True)
 
-        #DEBUG - MARKED - CHANGE
-        self.print_message_entries_dict()
+        if logging.root.level <= logging.DEBUG: 
+            self.print_message_entries_dict()
         return result
     
     def filter_messages(self, messages, entry_ids):
@@ -534,13 +535,15 @@ class System:
         #Get message type from address 
         address_config = self.addresses.get(address_name, {})
         message_type = address_config.get("message_type", "default")
-        #Get message id from message definition
+        #Get message id field and time from message definition
         message_config = self.messages.get(message_type, {}).get("content")
         id_field = message_config.get("id_field", "id")
         time_field = message_config.get("time_field", "time")
+        #Try to put in the message id and time from the message
         message_id = message_content.get(id_field, "default")
-        time = util.get_today_date_time_utc()
-        time_value = message_content.get(time_field, time)
+        time_value = message_content.get(time_field, None)
+        if time_value == None:
+            time_value = util.get_today_date_time_utc()
         #Envelope it 
         enveloped_message = {
             "msg_id": message_id,
@@ -548,6 +551,7 @@ class System:
             "msg_type": message_type,
             "msg_content": message_content
         }
+        logging.debug(f"Enveloped message {enveloped_message}")
         return enveloped_message
 
 
@@ -573,6 +577,7 @@ class System:
         
         """
         main_dict = {}
+        #For each message type, create a blank message entries dictionary 
         for message_type in self.messages.keys():
             main_dict[message_type] = self.create_message_dict_entry()
         #Create the message entry dictionary 
@@ -593,7 +598,7 @@ class System:
             print_dict = {
                 sub_type: self.message_entries[sub_type]
             }
-        print("Message Table Entries")
+        print("---------Message Table Entries--------------")
         for message_type in print_dict.keys():
             print(message_type)
             print(json.dumps(print_dict[message_type].get("messages", {}), indent=4))
@@ -621,19 +626,26 @@ class System:
         of them only. 
         """
         send = {}
-        #Get the semaphpore
-        message_holder = self.message_entries.get(message_type, {})
-        if message_holder != {}:
-            self.get_message_semaphore(message_type)
-            send = message_holder.get(messages, {}).copy()
-            self.release_message_semaphore(message_type)   
-        else:
-            logging.debug(f"{message_type} not recognized by the system on get message") 
-        if list_form: 
-            send_list = []
-            for key, item_val in send.items():
-                send_list.append(item_val)
-            send = send_list
+        try:
+            #Get the semaphpore
+            message_holder = self.message_entries.get(message_type, {})
+            if message_holder != {}:
+                self.get_message_semaphore(message_type)
+                send = message_holder.get(messages, {}).copy()
+                self.release_message_semaphore(message_type)   
+            else:
+                logging.debug(f"{message_type} not recognized by the system on get message") 
+            if list_form: 
+                send_list = []
+                for key, item_val in send.items():
+                    send_list.append(item_val)
+                send = send_list
+        except Exception as e:
+            logging.error(f"Could not get all messages of type {message_type}, {e}", exc_info=True)
+            try:
+                self.release_message_semaphore(message_type)
+            except Exception as e:
+                pass 
         return send
 
     def get_message_semaphore(self, message_type):
@@ -641,36 +653,53 @@ class System:
         Takes in a message type. Acquires the message semaphore, if 
         it exists
         """
-        message_holder = self.message_entries.get(message_type, {})
-        if message_holder != {}:
-            message_semaphore = message_holder.get("semaphore", None)
-            if message_semaphore != None:
-                message_semaphore.acquire()
+        try:
+            message_holder = self.message_entries.get(message_type, {})
+            if message_holder != {}:
+                message_semaphore = message_holder.get("semaphore", None)
+                if message_semaphore != None:
+                    message_semaphore.acquire()
+                    logging.debug(f"Message semaphore for {message_type} aquired")
+        except Exception as e:
+            logging.error(f"Could not get message semaphore for {message_type}")
+            try:
+                message_semaphore.release()
+            except Exception as e:
+                pass 
 
     def release_message_semaphore(self, message_type):
         """
         Takes in a message type. Releases the message semaphore,
         if it exists 
         """
-        message_holder = self.message_entries.get(message_type, {})
-        if message_holder != {}:
-            message_semaphore = message_holder.get("semaphore", None)
-            if message_semaphore != None:
-                message_semaphore.release()
+        try:
+            message_holder = self.message_entries.get(message_type, {})
+            if message_holder != {}:
+                message_semaphore = message_holder.get("semaphore", None)
+                if message_semaphore != None:
+                    message_semaphore.release()
+                    logging.debug(f"Message semaphore for {message_type} released")
+        except Exception as e:
+            logging.error(f"Could not release message semaphore for {message_type}")
 
     def get_latest_message_entry(self, message_type):
         """Get the latest message entry for a given
         message type 
         """
         latest = None
-        self.get_message_semaphore(message_type)
-        message_handler = self.message_entries.get(message_type, {})
-        latest = message_handler.get("latest_entry_id", None)
-        self.release_message_semaphore(message_type)
-
+        try:
+            self.get_message_semaphore(message_type)
+            message_handler = self.message_entries.get(message_type, {})
+            latest = message_handler.get("latest_entry_id", None)
+            self.release_message_semaphore(message_type)
+        except Exception as e:
+            logging.error(f"Could not get latest message entry for {message_type}, {e}", exc_info=True)
+            try:
+                self.release_message_semaphore(message_type)
+            except Exception as e:
+                pass 
         return latest 
                     
-    #TODO: Probably need a try/except clause here 
     def add_message(self, message_type, message):
         """
         Takes in a message (after being enveloped) and 
@@ -678,34 +707,41 @@ class System:
         Returns the msg id of the successfully added message, or False
         """
         result = False
-        #Get the semaphore based on the message type
-        message_holder = self.message_entries.get(message_type, {})
-        if message_holder != {}:
-            #Give the message an entry id
-            self.get_message_semaphore(message_type)
-            latest_entry = message_holder.get("latest_entry_id", 0)
-            latest_entry += 1
-            #Don't necessarily have to do this - in interest
-            #of keeping numbers small and readable 
-            if latest_entry > 9999:
-                latest_entry = 0
-            message["entry_id"] = latest_entry
-            msg_id = message.get("msg_id", None)
-            #Insert the new message at the message id, or the 
-            #'default' message id 
-            if msg_id:
-                message_holder["messages"][msg_id] = message
+        try:
+            #Get the semaphore based on the message type
+            message_holder = self.message_entries.get(message_type, {})
+            if message_holder != {}:
+                #Give the message an entry id
+                self.get_message_semaphore(message_type)
+                latest_entry = message_holder.get("latest_entry_id", 0)
+                latest_entry += 1
+                #Don't necessarily have to do this - in interest
+                #of keeping numbers small and readable 
+                if latest_entry > 9999:
+                    latest_entry = 0
+                message["entry_id"] = latest_entry
+                msg_id = message.get("msg_id", None)
+                #Insert the new message at the message id, or the 
+                #'default' message id 
+                if msg_id:
+                    message_holder["messages"][msg_id] = message
+                else:
+                    message_holder["messages"]["default"] = message
+                #Update the latest entry id 
+                message_holder["latest_entry_id"] = latest_entry
+                #Release the semaphore
+                #Might also send before release here. 
+                self.release_message_semaphore(message_type)
+                #Return the entry id 
+                result = latest_entry
             else:
-                message_holder["messages"]["default"] = message
-            #Update the latest entry id 
-            message_holder["latest_entry_id"] = latest_entry
-            #Release the semaphore
-            #Might also send before release here. 
-            self.release_message_semaphore(message_type)
-            #Return the entry id 
-            result = latest_entry
-        else:
-            logging.debug(f"{message_type} not recognized by system on add message")
+                logging.debug(f"{message_type} not recognized by system on add message")
+        except Exception as e:
+            logging.error(f"Could not add message of {message_type}, {e}", exc_info=True)
+            try:
+                self.release_message_semaphore(message_type)
+            except Exception as e:
+                pass 
         return result
 
 
@@ -716,17 +752,24 @@ class System:
         to the message type in a list 
         """
         return_messages_list = []
-        message_holder = self.message_entries.get(message_type, {})
-        if message_holder != {}:
-            #Get the semaphore based on the message type
-            self.get_message_semaphore(message_type)
-            messages_dict = message_holder.get("messages", {})
-            for msg_id, enveloped_message in messages_dict.items():
-                return_messages_list.append(enveloped_message.copy())
-            #Release the semaphore
+        try:
+            message_holder = self.message_entries.get(message_type, {})
+            if message_holder != {}:
+                #Get the semaphore based on the message type
+                self.get_message_semaphore(message_type)
+                messages_dict = message_holder.get("messages", {})
+                for msg_id, enveloped_message in messages_dict.items():
+                    return_messages_list.append(enveloped_message.copy())
+                #Release the semaphore
+                self.release_message_semaphore(message_type)
+            else:
+                logging.debug(f"No messages found for {message_type} ")
+        except Exception as e:
+            logging.error(f"Could not get messages of {message_type}, {e}", exc_info=True)
+        try:
             self.release_message_semaphore(message_type)
-        else:
-            logging.debug(f"No messages found for {message_type} ")
+        except Exception as e:
+            pass 
         return return_messages_list
     
     ######## Objects #############
@@ -738,15 +781,18 @@ class System:
         {"name of message": message_config}
         """
         return_dict = {}
-        for address in addresses:
-            address_dict = self.addresses.get(address, {})
-            address_message = address_dict.get("message_type", None)
-            if address_message:
-                message_dict = self.messages.get(address_message, {})
-                message_config = message_dict.get("content", {})
-            else:
-                message_config = {}
-            return_dict[address_message] = message_config
+        try:
+            for address in addresses:
+                address_dict = self.addresses.get(address, {})
+                address_message = address_dict.get("message_type", None)
+                if address_message:
+                    message_dict = self.messages.get(address_message, {})
+                    message_config = message_dict.get("content", {})
+                else:
+                    message_config = {}
+                return_dict[address_message] = message_config
+        except Exception as e:
+            logging.error(f"Could not get messages configs for addresses {addresses}, {e}", exc_info=True)
         return return_dict 
 
     def get_send_and_receive_addresses(self, addresses):
@@ -757,19 +803,25 @@ class System:
         """
         send_addresses = {}
         receive_addresses = {}
-        for address_name in addresses: 
-            sub_address = self.addresses.get(address_name, {})
-            address_type = sub_address.get("send_or_receive", None)
-            if address_type == "send":
-                send_addresses[address_name] = sub_address.copy()
-            elif address_type == "receive":
-                receive_addresses[address_name] = sub_address.copy()
+        try:
+            for address_name in addresses: 
+                sub_address = self.addresses.get(address_name, {})
+                address_type = sub_address.get("send_or_receive", None)
+                if address_type == "send":
+                    send_addresses[address_name] = sub_address.copy()
+                elif address_type == "receive":
+                    receive_addresses[address_name] = sub_address.copy()
+        except Exception as e:
+            logging.error(f"Could not get send and receive addresses for addresses {addresses}, {e}", exc_info=True)
         return send_addresses, receive_addresses 
 
     def get_object(self, path_name, module_name, return_function="return_object"):
-        item = None          
-        import_string = f"{path_name}.{module_name}"
-        item = getattr(importlib.import_module(import_string, package=None), return_function)
+        item = None    
+        try:      
+            import_string = f"{path_name}.{module_name}"
+            item = getattr(importlib.import_module(import_string, package=None), return_function)
+        except Exception as e:
+            logging.error(f"Could not get object {path_name}.{module_name}.{return_function}, {e}", exc_info=True)
         #item = getattr(item, return_function)
         return item 
 
@@ -780,21 +832,25 @@ class System:
         "object" field indexed by the handler name 
         in the handlers system dictionary. 
         """
-        #Get the config for the handler
-        handler_dict = self.handlers.get(handler_name, {})
-        handler_config = handler_dict.get("content", {})
-        handler_addresses = handler_dict.get("addresses", [])
-        #Get the send and recieve addresses for the handler: 
-        send_addresses, receive_addresses = self.get_send_and_receive_addresses(handler_addresses)
-        #Get the message configurations 
-        message_configs = self.get_message_configs_from_addresses(handler_addresses)
-        #This is where we need to get the init info for the actual driver 
-        handler_path = "src.handlers"
-        source_name = handler_config.get("source", handler_name)
-        handler_wrapper = self.get_object(handler_path, source_name, return_function="return_object")
-        handler_item = handler_wrapper(config=handler_config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
-        handler_dict["object"] = handler_item
-        #Should probably have a return value - think about 
+        try:
+            #Get the config for the handler
+            handler_dict = self.handlers.get(handler_name, {})
+            handler_config = handler_dict.get("content", {})
+            handler_addresses = handler_dict.get("addresses", [])
+            #Get the send and recieve addresses for the handler: 
+            send_addresses, receive_addresses = self.get_send_and_receive_addresses(handler_addresses)
+            #Get the message configurations 
+            message_configs = self.get_message_configs_from_addresses(handler_addresses)
+            #This is where we need to get the init info for the actual driver 
+            handler_path = "src.handlers"
+            source_name = handler_config.get("source", handler_name)
+            handler_wrapper = self.get_object(handler_path, source_name, return_function="return_object")
+            if handler_wrapper:
+                handler_item = handler_wrapper(config=handler_config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
+                handler_dict["object"] = handler_item
+                logging.debug(f"Initialized handler {handler_name}")
+        except Exception as e:
+            logging.error(f"Could not initialize handler {handler_name}")
 
     def init_carrier(self, carrier_name):
         """
@@ -802,22 +858,26 @@ class System:
         Intializes the carrier object and adds it to 
         the "object" field of carrier dictionary 
         """
-        #Get the config for the handler
-        carrier_dict = self.carriers.get(carrier_name, {})
-        carrier_config = carrier_dict.get("content", {})
-        carrier_addresses = carrier_dict.get("addresses", [])
-        #Get the send and recieve addresses for the handler: 
-        send_addresses, receive_addresses = self.get_send_and_receive_addresses(carrier_addresses)
-        #Get the message configurations 
-        message_configs = self.get_message_configs_from_addresses(carrier_addresses)
-        #This is where we need to get the init info for the actual driver 
-        carrier_path = "src.carriers"
-        source_name = carrier_config.get("source", carrier_name)
+        try:
+            #Get the config for the handler
+            carrier_dict = self.carriers.get(carrier_name, {})
+            carrier_config = carrier_dict.get("content", {})
+            carrier_addresses = carrier_dict.get("addresses", [])
+            #Get the send and recieve addresses for the handler: 
+            send_addresses, receive_addresses = self.get_send_and_receive_addresses(carrier_addresses)
+            #Get the message configurations 
+            message_configs = self.get_message_configs_from_addresses(carrier_addresses)
+            #This is where we need to get the init info for the actual driver 
+            carrier_path = "src.carriers"
+            source_name = carrier_config.get("source", carrier_name)
 
-        carrier_wrapper = self.get_object(carrier_path, source_name, return_function="return_object")
-        carrier_item = carrier_wrapper(config=carrier_config, send_addresses=send_addresses.copy(), receive_addresses=receive_addresses.copy(), message_configs=message_configs)
-        carrier_dict["object"] = carrier_item
-        #Might want to think getting a return value here 
+            carrier_wrapper = self.get_object(carrier_path, source_name, return_function="return_object")
+            if carrier_wrapper:
+                carrier_item = carrier_wrapper(config=carrier_config, send_addresses=send_addresses.copy(), receive_addresses=receive_addresses.copy(), message_configs=message_configs)
+                carrier_dict["object"] = carrier_item
+                logging.debug(f"Initialized carrier {carrier_name}")
+        except Exception as e:
+            logging.error(f"Could not initialize carrier {carrier_name}, {e}", exc_info=True)
 
     def init_task(self, task_name):
         """
@@ -825,37 +885,120 @@ class System:
         Intializes the task object and adds it to 
         the "object" field of task dictionary 
         """
-        #Get the config for the tasks
-        task_dict = self.tasks.get(task_name, {})
-        #This is where we need to get the init info for the actual driver 
-
-        #CHANGE HERE - CHECK!! MARKED 
-        #If this task is a source file in the actual tasks folder
-        if "source" in list(task_dict.keys()):
-            task_path = "src.tasks"
-            source_name = task_dict.get("source", task_name)
-            task_wrapper = self.get_object(task_path, source_name, return_function="return_object")
-            task_item = task_wrapper(config=task_dict)
-            task_dict["object"] = task_item
-        #Otherwise: 
-        else:
-            #Get the folder
-            task_item = None
-            source_type = task_dict.get("source_type", None)
-            config_name = task_dict.get("config_name", None)
-            if source_type == "carrier":
-                task_item = self.carriers.get(config_name, {}).get("object", None)
-            elif source_type == "handler":
-                task_item = self.handlers.get(config_name, {}).get("object", None)
-            task_dict["object"] = task_item 
+        try:
+            #Get the config for the tasks
+            task_dict = self.tasks.get(task_name, {})
+            #This is where we need to get the init info for the actual driver 
+            #If this task is a source file in the actual tasks folder
+            if "source" in list(task_dict.keys()):
+                task_path = "src.tasks"
+                source_name = task_dict.get("source", task_name)
+                task_wrapper = self.get_object(task_path, source_name, return_function="return_object")
+                if task_wrapper:
+                    task_item = task_wrapper(config=task_dict)
+                    task_dict["object"] = task_item
+            #Otherwise: 
+            else:
+                #Get the folder
+                task_item = None
+                source_type = task_dict.get("source_type", None)
+                config_name = task_dict.get("config_name", None)
+                if source_type == "carrier":
+                    task_item = self.carriers.get(config_name, {}).get("object", None)
+                elif source_type == "handler":
+                    task_item = self.handlers.get(config_name, {}).get("object", None)
+                task_dict["object"] = task_item 
+        except Exception as e:
+            logging.error(f"Could not intialize task {task_name}, {e}", exc_info=True)
         #Might want to think getting a return value here?
 
     def init_scheduler(self):
-        self.create_scheduler()
-        self.create_scheduler_dict()
-        self.schedule_jobs()
+        try:
+            logging.debug("Creating scheduler object")
+            self.create_scheduler()
+            logging.debug("Creating scheduler dictionary")
+            self.create_scheduler_dict()
+            logging.debug("Scheduling jobs")
+            self.schedule_jobs()
+        except Exception as e:
+            logging.error(f"Issue initializing scheduler {e}", exc_info=True)
 
+    def create_carrier_schedule_dict(self, scheduler_dict, on_message_routing_dict): 
+        """
+        Takes in the scheduler dict and on_message routing dict and 
+        creates a job id for all the carrier functions 
+        """
+        #First, going to scheduler the carriers 
+        for address_name, address_config in self.addresses.items():
+            try:
+                #Job ID goes - name_function_duration
+                duration = address_config.get("duration", "as_needed")
+                carrier_name = address_config.get("carrier", None)
+                function = address_config.get("send_or_receive", None)
+                job_id = f"{carrier_name}_{function}_{duration}"
+                #Helps create the on_message triggering dictionary, which is very useful
+                if duration == "on_message":
+                    message_type = address_config.get("message_type", None)
+                    job_list = on_message_routing_dict.get(message_type, [])
+                    job_list.append(job_id)
+                    on_message_routing_dict[message_type] = job_list
+                job_dict = scheduler_dict.get(job_id, {})
+                #If we don't have a job dictionary at this id:
+                if not job_dict:
+                    #Get the carrier object handler
+                    carrier_object = self.carriers.get(carrier_name, {}).get("object", None)
+                    #Create the job dictionary 
+                    new_job_dict = {
+                        "object_name": carrier_name,
+                        "object": carrier_object,
+                        "function": function,
+                        "arguments": [address_name],
+                        "duration": duration,
+                        "type": "carrier"
+                    }
+                    scheduler_dict[job_id] = new_job_dict
+                else:
+                    #If we do, just append the addresses
+                    job_dict["arguments"].append(address_name)
+            except Exception as e:
+                logging.error(f"Could not create job dict for address {address_name}, {e}", exc_info=True)
+        return scheduler_dict, on_message_routing_dict
+            
 
+    def create_task_schedule_dict(self, scheduler_dict, on_message_routing_dict):
+        """
+        Takes in the scheduler dict and on_message routing dict and 
+        creates a job id for all the task functions 
+        NOTE: Lot of cross-over with carrier. Next refactor should improve this flow. 
+        """ 
+         #Next, going to schedule the tasks 
+        for task_name, task_config in self.tasks.items():
+            try:
+                #Job ID goes - name_function_duration
+                duration = task_config.get("duration", "as_needed") 
+                task_object = task_config.get("object", None)
+                function = task_config.get("function", None)
+                arguments = task_config.get("arguments", None)
+                job_id = f"{task_name}_{function}_{duration}"
+                #In case we have any tasks triggered by a message, as well 
+                #Probaby need to add message_type here as well (entry ids need to be in source)
+                if duration == "on_message":
+                    message_type = task_config.get("message_type", None)
+                    job_list = on_message_routing_dict.get(message_type, [])
+                    job_list.append(job_id)
+                    on_message_routing_dict[message_type] = job_list
+                new_job_dict = {
+                        "object_name": task_name,
+                        "object": task_object,
+                        "function": function,
+                        "arguments": arguments,
+                        "duration": duration,
+                        "type": "task"
+                    }
+                scheduler_dict[job_id] = new_job_dict
+            except Exception as e:
+                logging.error(f"Could not create job dict for task {task_name}, {e}", exc_info=True)
+        return scheduler_dict, on_message_routing_dict
     #Scheduler functions 
     def create_scheduler_dict(self):
         """
@@ -881,63 +1024,11 @@ class System:
         """
         scheduler_dict = {}
         on_message_routing_dict = {}
-
-        #First, going to scheduler the carriers 
-        for address_name, address_config in self.addresses.items():
-            #Job ID goes - name_function_duration
-            duration = address_config.get("duration", "as_needed")
-            carrier_name = address_config.get("carrier", None)
-            function = address_config.get("send_or_receive", None)
-            job_id = f"{carrier_name}_{function}_{duration}"
-            #Helps create the on_message triggering dictionary, which is very useful
-            if duration == "on_message":
-                message_type = address_config.get("message_type", None)
-                job_list = on_message_routing_dict.get(message_type, [])
-                job_list.append(job_id)
-                on_message_routing_dict[message_type] = job_list
-            job_dict = scheduler_dict.get(job_id, {})
-            #If we don't have a job dictionary at this id:
-            if not job_dict:
-                #Get the carrier object handler
-                carrier_object = self.carriers.get(carrier_name, {}).get("object", None)
-                #Create the job dictionary 
-                new_job_dict = {
-                    "object_name": carrier_name,
-                    "object": carrier_object,
-                    "function": function,
-                    "arguments": [address_name],
-                    "duration": duration,
-                    "type": "carrier"
-                }
-                scheduler_dict[job_id] = new_job_dict
-            else:
-                #If we do, just append the addresses
-                job_dict["arguments"].append(address_name)
-   
-        #Next, going to schedule the tasks 
-        for task_name, task_config in self.tasks.items():
-            #Job ID goes - name_function_duration
-            duration = task_config.get("duration", "as_needed") 
-            task_object = task_config.get("object", None)
-            function = task_config.get("function", None)
-            arguments = task_config.get("arguments", None)
-            job_id = f"{task_name}_{function}_{duration}"
-            #In case we have any tasks triggered by a message, as well 
-            #Probaby need to add message_type here as well (entry ids need to be in source)
-            if duration == "on_message":
-                message_type = task_config.get("message_type", None)
-                job_list = on_message_routing_dict.get(message_type, [])
-                job_list.append(job_id)
-                on_message_routing_dict[message_type] = job_list
-            new_job_dict = {
-                    "object_name": task_name,
-                    "object": task_object,
-                    "function": function,
-                    "arguments": arguments,
-                    "duration": duration,
-                    "type": "task"
-                }
-            scheduler_dict[job_id] = new_job_dict
+        try:
+            scheduler_dict, on_message_routing_dict = self.create_carrier_schedule_dict(scheduler_dict, on_message_routing_dict)
+            scheduler_dict, on_message_routing_dict = self.create_task_schedule_dict(scheduler_dict, on_message_routing_dict)
+        except Exception as e:
+            logging.error("Issue creating scheduler dictionary")
         self.scheduler_dict = scheduler_dict
         self.on_message_routing_dict = on_message_routing_dict
 
@@ -963,9 +1054,11 @@ class System:
                 #If its a seconds interval
                 if str(duration).isnumeric():
                     self.scheduler.add_job(getattr(job_object, function), 'interval', args=arguments, id=job_id, seconds=int(duration), jitter=10)
+                    logging.debug(f"Scheduled job id {job_id} to run every {duration} seconds")
                 #Otherwise, if its an always job 
                 elif str(duration) == "always":
                     self.scheduler.add_job(getattr(job_object, function), args=arguments, id=job_id, misfire_grace_time=None)
+                    logging.debug(f"Scheduled job id {job_id} to run always")
             except Exception as e:
                 logging.error(f"Could not schedule job {job_id}", exc_info=True)
 
@@ -973,32 +1066,46 @@ class System:
         """
         Start the job scheduler 
         """
-        self.scheduler.start()
-
+        try:
+            self.scheduler.start()
+            logging.info("Started scheduler")
+        except Exception as e:
+            logging.error(f"Could not start scheduler, {e}", exc_info=True )
 
     def print_scheduled_jobs(self):
         """
         Takes no arguments. Prints jobs currently 
         scheduled on scheduler 
         """
-        all_jobs = self.scheduler.get_jobs()
-        print ("Scheduled Jobs")
-        for job in all_jobs:
-            print(f"JOB ID: {job.id} | TRIGGER: {job.trigger} | NEXT_RUN: {job.next_run_time} | FUNCTION: {job.func} | ARGS: {job.args}")
+        try:
+            all_jobs = self.scheduler.get_jobs()
+            print("Scheduled Jobs")
+            for job in all_jobs:
+                print(f"JOB ID: {job.id} | TRIGGER: {job.trigger} | NEXT_RUN: {job.next_run_time} | FUNCTION: {job.func} | ARGS: {job.args}")
+        except Exception as e:
+            logging.error(f"Could not print all scheduled jobs, {e}", exc_info=True)
 
     def print_scheduler_dict(self):
         """
         Takes no arguments
         Prints out the scheduler dictionary 
         """
-        print(json.dumps(self.scheduler_dict, indent=4, default=str))
+        try:
+            print("Scheduler Dictionary")
+            print(json.dumps(self.scheduler_dict, indent=4, default=str))
+        except Exception as e:
+            logging.error(f"Could not print the scheduler dictionary, {e}", exc_info=True)
 
     def print_on_message_routing_dict(self):
         """
         Takes no arguments
         Prints out the scheduler dictionary 
         """
-        print(json.dumps(self.on_message_routing_dict, indent=4, default=str))
+        try:
+            print("On Message Routing Dictionary")
+            print(json.dumps(self.on_message_routing_dict, indent=4, default=str))
+        except Exception as e:
+            logging.error(f"Could not print the on_message routing dictionary, {e}", exc_info=True)
 
     #End system class definition 
 

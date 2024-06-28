@@ -8,6 +8,10 @@ import util.util as util
 import asyncio
 from bleak import BleakScanner, BleakClient
 
+if logging.root.level > logging.DEBUG:
+    logging.getLogger('bleak.backends.bluezdbus.scanner').setLevel(logging.WARNING)
+else:
+    logging.getLogger('bleak.backends.bluezdbus.scanner').setLevel(logging.INFO)
 
 #Help from the documentation here: https://www.eclipse.org/paho/index.php?page=clients/python/docs/index.php#multiple
 #We can probably make this a lot better! 

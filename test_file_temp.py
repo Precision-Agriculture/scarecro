@@ -6,3 +6,7 @@
 # print(all_modules)
 
 # #import data_endpoints.mongodb as database 
+
+# # create logger
+# logger = logging.getLogger('simple_example')
+# logger.setLevel(logging.DEBUG)
