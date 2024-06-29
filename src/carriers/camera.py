@@ -68,7 +68,7 @@ class Camera():
         new_dict = {}
         utc_curr_time = datetime.now(tz=pytz.UTC)
         file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        file_day = datetime.datetime.now().strftime("%Y-%m-%d")
+        file_day = datetime.now().strftime("%Y-%m-%d")
         picture_folder_save_path = f"{save_path}/{str(file_day)}/"
         os.makedirs(picture_folder_save_path, exist_ok=True)
         #Save filename as {datetime}_{id}_{camera_type}.jpg 
