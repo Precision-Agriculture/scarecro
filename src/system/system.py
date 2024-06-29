@@ -3,6 +3,7 @@ import importlib
 import json 
 import logging 
 import threading 
+import copy 
 from apscheduler.schedulers.background import BackgroundScheduler
 import apscheduler.events
 sys.path.append("../scarecro")
@@ -25,6 +26,8 @@ class System:
         #carriers, ... 
         self.init_system_object(system_config)
 
+
+
     ####### Configs ########################
     def init_system_object(self, system_config=None):
         """
@@ -32,6 +35,7 @@ class System:
         And initializes the system 
 
         """
+        self.system_config = {}
         #Get the system config 
         if system_config:
             logging.debug(f"Using system configuration passed in")
@@ -41,6 +45,7 @@ class System:
             self.system_config = self.import_config("system", "system", "system")
         #Get the post office info - addresses, carriers, 
         #handlers, and messages 
+        self.system_id = self.system_config.get("id", "default")
         self.init_post_office_configs() 
         #Create the system message table 
         self.create_message_table()
@@ -65,7 +70,8 @@ class System:
             self.print_scheduler_dict()
             self.print_on_message_routing_dict()
         
-
+    def return_system_id(self):
+        return self.system_id
 
     def start_system(self):
         """
@@ -285,13 +291,13 @@ class System:
             if isinstance(message_type, list):
                 for sub_message_type in message_type:
                     sub_address_name = f"{address_name}_{sub_message_type}"
-                    sub_content = content.copy()
+                    sub_content = copy.deepcopy(content)
                     sub_content["message_type"] = sub_message_type
                     sub_content = self.complete_content(path_name, sub_address_name, "address", sub_content)
                     self.addresses[sub_address_name] = sub_content
             else:
-                content = self.complete_content(path_name, address_name, "address", content)
-                self.addresses[address_name] = content
+                new_content = self.complete_content(path_name, address_name, "address", content)
+                self.addresses[address_name] = new_content
 
 
     def return_default_mapping_dict(self):
@@ -433,13 +439,13 @@ class System:
                     triggered_function = job_config.get("function", None)
                     overall_function = getattr(triggered_object, triggered_function)
                     logging.debug(f"Executing {job_id} to {triggered_function} on {message_type} message with arguments {arguments}")
-                    if carrier_function == "send":
+                    if triggered_function == "send":
                         overall_function(arguments, "on_message", entry_ids=entry_ids)
-                    elif carrier_function == "receive":
+                    elif triggered_function == "receive":
                         overall_function(arguments, "on_message")
                     else:
                         #Like from a task (need to still run entry ids, I think) #MARKED #CHANGE 
-                        overall_function(arguments, entry_ids=entry_ids)
+                        overall_function(arguments, entry_ids=entry_ids, message_type=message_type)
                 except Exception as e:
                     logging.error(f"Could not run {job_id} on on_message trigger for {message_type}", exc_info=True)
 
@@ -523,6 +529,27 @@ class System:
                         logging.error(f"Could not filter {message_type} to entry ids {entry_ids}", exc_info=True)
         except Exception as e:
             logging.error(f"Could not pick up message on address {address}", exc_info=True)
+        return messages 
+
+    def pickup_messages_by_message_type(self, message_type=None, entry_ids=[]):
+        """
+        Takes in an address_name and optionally a list of message_ids
+        Returns a list of messages corresponding to the address, and 
+        filtered by message ids, potentially. 
+        """
+        messages = []
+        try:
+            #Get the messages from the post office
+            messages = self.get_messages(message_type)
+            if messages != []:
+                #Optionally filter the messages 
+                if entry_ids != []:
+                    try:
+                        messages = self.filter_messages(messages, entry_ids)
+                    except Exception as e:
+                        logging.error(f"Could not filter {message_type} to entry ids {entry_ids}", exc_info=True)
+        except Exception as e:
+            logging.error(f"Could not pick up message of message_type {message_type}", exc_info=True)
         return messages 
 
 
@@ -938,6 +965,7 @@ class System:
                 job_id = f"{carrier_name}_{function}_{duration}"
                 #Helps create the on_message triggering dictionary, which is very useful
                 if duration == "on_message":
+                    job_id = f"{carrier_name}_{function}_{duration}_{address_name}"
                     message_type = address_config.get("message_type", None)
                     job_list = on_message_routing_dict.get(message_type, [])
                     job_list.append(job_id)
@@ -983,6 +1011,7 @@ class System:
                 #In case we have any tasks triggered by a message, as well 
                 #Probaby need to add message_type here as well (entry ids need to be in source)
                 if duration == "on_message":
+                    job_id = f"{task_name}_{function}_{duration}_{address_name}"
                     message_type = task_config.get("message_type", None)
                     job_list = on_message_routing_dict.get(message_type, [])
                     job_list.append(job_id)

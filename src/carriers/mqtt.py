@@ -23,10 +23,10 @@ class MQTT_Client():
             qos: qos of mqtt messages. Defaults to 1. 
         """
         #arguments passed in 
-        self.config = config 
-        self.send_addresses = send_addresses 
-        self.receive_addresses = receive_addresses
-        self.message_configs = message_configs
+        self.config = config.copy() 
+        self.send_addresses = send_addresses.copy()
+        self.receive_addresses = receive_addresses.copy()
+        self.message_configs = message_configs.copy()
         #See if we need to be passing in mqtt topic in our message
         self.include_topic = self.config.get("include_topic", False)
 
@@ -37,6 +37,8 @@ class MQTT_Client():
         self.mqtt_password = self.config.get("mqtt_password", None)
         self.qos = self.config.get("qos", 1)
         self.client_id = self.config.get("client_id", "default")
+        self.system_id = self.config.get("system_id", "default")
+        self.client_id = f"{self.client_id}_{self.system_id}"
         self.protocol_num = self.config.get("version", 5)
         #if self.protocol_num == 5:
         self.protocol = paho.MQTTv5
@@ -96,7 +98,7 @@ class MQTT_Client():
         #Map it to an address
         address_name = self.check_topic_map(topic_name)
         message_body = json.loads(message.payload)
-        logging.debug(f"Received Message {topic} {message_body} {address_name}")
+        logging.debug(f"Received Message {topic_name} {message_body} {address_name}")
         if self.include_topic:
             message_body["topic"] = topic_name
         if address_name:
@@ -146,7 +148,9 @@ class MQTT_Client():
         for the client 
         """
         if reasonCode==0:
-            if userdata != []:
+            if userdata == None:
+                userdata = []
+            if isinstance(userdata, list):
                 for topic in userdata:
                     logging.info(f'{topic} connected, return code: {reasonCode}')
                     #Need to revisit qos?
@@ -268,6 +272,7 @@ class MQTT_Client():
                         #Send only if we haven't already sent it
                         if entry_id not in sent_entries:
                             content = message.get("msg_content", {})
+                            content["gateway_id"] = self.system_id
                             return_val = self.publish(topic, content)
                     self.sent_entries[topic] = new_entry_ids
             except Exception as e:
@@ -275,5 +280,3 @@ class MQTT_Client():
     
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return MQTT_Client(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
-
-         

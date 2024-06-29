@@ -2,6 +2,7 @@ import sys
 import pymongo
 import logging 
 import json
+import copy 
 sys.path.append("../scarecro")
 import system_object
 
@@ -370,11 +371,12 @@ class Mongodb():
                 if entry_id not in sent_entries:
                     content = message.get("msg_content", {})
                     if content:
-                        content_send_list.append(content)
+                        content_send_list.append(copy.deepcopy(content))
             self.sent_entries[collection_name] = new_entry_ids
             #If we indeed have new messages, send 'em 
             if content_send_list != []:
                 succ = self.insert_records(content_send_list, collection_name)
+                logging.debug(f"Inserted records for {address_name} into database")
                 if not succ:
                     logging.error(f"Could not send messages on address {address_name} for collection {collection_name}", exc_info=True)
         #Disconnect if not a persistent connection 

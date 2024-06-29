@@ -25,7 +25,7 @@ class TestMessage:
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_definitions = message_configs.copy()
-        print("Initing test handler")
+        logging.info("Initing test handler")
 
 
     def process(self, message_type, messages):

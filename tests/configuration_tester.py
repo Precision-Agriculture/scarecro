@@ -6,7 +6,8 @@ import logging
 import system_object
 #Get the system config
 import src.system.system as system_class 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %(message)s')
+#logging.Formatter('%(levelname)s - %(asctime)s - %(message)s')
 #Need to come up with several message types and system classes 
 
 def run_test_configuration(system_config):

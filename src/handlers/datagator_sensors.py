@@ -62,7 +62,7 @@ class DataGatorSensors:
         except Exception as e:
             logging.error("Could not process datagator message: ", exc_info=True)
         #MARKED
-        logging.info(f"Datagator Reading {new_dict}")
+        logging.debug(f"Datagator Reading {new_dict}")
         return new_dict
 
     def parse_datagator_ota(self, message):
@@ -85,7 +85,7 @@ class DataGatorSensors:
         except Exception as e:
             logging.error("Could not process datagator_ota message: ", exc_info=True)
         #MARKED
-        logging.info(f"Datagator OTA Reading {new_dict}")
+        logging.debug(f"Datagator OTA Reading {new_dict}")
         return new_dict
 
 
@@ -109,7 +109,7 @@ class DataGatorSensors:
                 new_dict["PH_RAW"] = message["PH_RAW"]
         except Exception as e:
             logging.error(f"Could not process atlas gravity message: {message}", exc_info=True)
-        logging.info(f"Atlas ezo pH reading: {new_dict}")
+        logging.debug(f"Atlas ezo pH reading: {new_dict}")
         return new_dict
 
     def parse_atlas_gravity_ph(self, message):
@@ -128,7 +128,7 @@ class DataGatorSensors:
             new_dict["PH_RAW"] = message["PH_RAW"]
         except Exception as e:
             logging.error(f"Could not process atlas gravity message: {message}", exc_info=True)
-        logging.info(f"Atlas Gravity pH reading: {new_dict}")
+        logging.debug(f"Atlas Gravity pH reading: {new_dict}")
         return new_dict
 
     def parse_generic_pH(self, message):
@@ -147,7 +147,7 @@ class DataGatorSensors:
             new_dict["PH_RAW"] = message["PH_RAW"]
         except Exception as e:
             logging.error("Could not process generic_pH message: ", exc_info=True)
-        logging.info(f"generic pH reading: {new_dict}")
+        logging.debug(f"generic pH reading: {new_dict}")
         return new_dict
 
     def parse_kkm_k6p(self, message):
@@ -170,7 +170,7 @@ class DataGatorSensors:
                 new_dict["SENSOR_NAME"] = message["SENSOR_NAME"]
         except Exception as e:
             logging.error("Could not process kkm_k6p message:", exc_info=True)
-        logging.info(f"kkm_k6p reading: {new_dict}")
+        logging.debug(f"kkm_k6p reading: {new_dict}")
         return new_dict
 
     def parse_meter_teros10(self, message):
@@ -190,7 +190,7 @@ class DataGatorSensors:
             new_dict["DEPTH"] = message["DEPTH"]
         except Exception as e:
             logging.error("Could not process meter_teros10 message: ", exc_info=True)
-        logging.info(f"meter_teros10 reading: {new_dict}")
+        logging.debug(f"meter_teros10 reading: {new_dict}")
         return new_dict
 
     def parse_minew_s1(self, message):
@@ -211,7 +211,7 @@ class DataGatorSensors:
                 new_dict["temperature"] = message["TEMP"]
         except Exception as e:
             logging.error("Could not process minew_s1 message: ", exc_info=True)
-        logging.info(f"Minew s1 reading: {new_dict}")
+        logging.debug(f"Minew s1 reading: {new_dict}")
         return new_dict
 
 
@@ -253,9 +253,4 @@ class DataGatorSensors:
 
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return DataGatorSensors(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
-
-
-
-
-
 
