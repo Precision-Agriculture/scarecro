@@ -137,7 +137,7 @@ class Camera():
                 reading = {}
                 if camera_type == "picamera":
                     reading = self.take_picam_picture(address_name)
-                elif camera_type = "pi_hawk_eye":
+                elif camera_type == "pi_hawk_eye":
                     reading = self.take_pi_hawk_eye_picture(address_name)
                 if reading:
                     reading = self.add_id_to_reading(reading, address_name)
