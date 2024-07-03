@@ -27,8 +27,8 @@ for database in client.database_names():
                 last_n_docs = col.find().skip(col.count() - n)
                 print(f"Last {n} Documents:")
                 for doc in last_n_docs:
-                    print(doc)
-                    json.dumps(doc, indent=4, default=str)
+                    print_doc = json.dumps(doc, indent=4, default=str)
+                    print(print_doc)
             except Exception as e:
                 print(f"Could not report on collection {collection_name}; {e}")
     except Exception as e:
