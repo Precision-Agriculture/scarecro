@@ -2,7 +2,7 @@ import configuration_tester
 system_config = {
     "id": "test_device",
     "addresses": [
-        #"weather_rack_433_in",
+        "weather_rack_433_in",
         "weather_rack_3_in",
         "wr3_power_in", 
         "aqi_in",
