@@ -11,6 +11,8 @@ print("---------Local Mongo Database Report--------------")
 print("All Databases")
 print(client.database_names())
 for database in client.database_names():
+    if database == "admin" or database == "config" or database == "local":
+        continue
     try:
         print(f"Database: {database}")
         db = getattr(client, database)
@@ -34,9 +36,5 @@ for database in client.database_names():
     except Exception as e:
         print(f"Could not report on database {database}; {e}")
 
-        #Print the number of 
-#For each database, connect to it and print the collection 
 client.close()
 
-#db.collection.find().skip(db.collection.count() - N)
-#
