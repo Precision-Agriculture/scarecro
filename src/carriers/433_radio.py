@@ -72,7 +72,7 @@ class Radio_433():
                 new_cmd.append('-R')
                 new_cmd.append(str(driver))
         #Debug for now
-        print(new_cmd)
+        logging.debug(f"433 Command {new_cmd}")
         return new_cmd
 
 
@@ -144,7 +144,7 @@ class Radio_433():
         except Exception as e:
             logging.error(f'Could not process sLine in radio_433 protocol', exc_info=True)
 
-    def listen(self):
+    def listen(self, cmd):
         """
         Takes in address names. 
         Listen for a sensor reading
@@ -177,7 +177,7 @@ class Radio_433():
         if duration == "always":
             while True:
                 self.time_since_last_sample = time.time() - self.last_sample_received
-                self.listen()
+                self.listen(cmd)
         else:
             try:
                 prev_time = time.time()
@@ -185,7 +185,7 @@ class Radio_433():
                 time_out = curr_time-prev_time
                 #Heuristic listening time - could have this configured 
                 while time_out < 50.0:
-                    self.listen()
+                    self.listen(cmd)
                     curr_time = time.time()
                     time_out = curr_time-prev_time
                 self.disconnect()

@@ -40,12 +40,49 @@ class Camera():
         self.create_folders()
         logging.info("Initialized camera carrier")
 
+
     def create_folders(self): 
         for address_name, folder in self.mapping_dict["folder"]["address_name"].items():
             #Create the folder
             make_path = f"{self.base_path}/{folder}/"
             if not os.path.exists(make_path):
                 os.makedirs(make_path)
+
+    #This function needs some work! - Especially getting the right path 
+    def clean_camera_pictures(self):
+        logging.info("Cleaning up picamera pictures")
+        days = self.config.get("keep_days_pictures", 14)
+        days = days+1 #Plus one - day buffer 
+        now = util.get_today_date_time_local(format="string")
+        seconds = 60*60*24*days
+        now_minus_time = util.add_to_time(now, -seconds)
+        cutoff_date = datetime.strptime(now_minus_time, "%Y-%m-%dT%H:%M:%S.%f")
+        folder_dict = self.mapping_dict.get("folder", {})
+        address_folder_mapping = folder_dict.get("address_name", {})
+        #For each configured folder where we might take picture, delete 
+        #everything before the cutoff date 
+        for address_name, folder_name in address_folder_mapping.items():
+            self.delete_folders_before_cutoff(folder_name, cutoff_date)
+        #Also try the generic camera folder, if it exists 
+        self.delete_folders_before_cutoff("camera", cutoff_date)
+        
+    def delete_folders_before_cutoff(self, folder_name, cutoff_date):
+        """
+        Deletes all folders with pictures
+        Before the cutoff date 
+        """
+        try:
+            glob_path = f"generated_files/{folder_name}/*"
+            files = glob.glob(glob_path)
+            #Take out folders that don't make the cut 
+            for folder in files: 
+                name = folder.split('/')[-1]
+                date = datetime.strptime(name, "%Y-%m-%d")
+                if date < cutoff_date:
+                    shutil.rmtree(folder)
+        except Exception as e:
+            logging.error(f"Could not clean up camera images in folder {folder_name}; {e}", exc_info=True)
+
 
     def add_id_to_reading(self, reading, address_name):
         """
@@ -86,7 +123,10 @@ class Camera():
         new_dict = {}
         logging.info("Taking picamera picture(s)")
         #Get the save path 
-        folder = self.mapping_dict["folder"]["address_name"][address_name]
+        try:
+            folder = self.mapping_dict["folder"]["address_name"][address_name]
+        except Exception as e:
+            folder = "camera"
         save_path = f"{self.base_path}/{folder}/"
         camera = picamera.PiCamera()
         camera.exposure_mode = "auto"
@@ -114,7 +154,10 @@ class Camera():
         new_dict = {}
         logging.info("Taking pi_hawk_eye picture(s)")
         #Get the save path 
-        folder = self.mapping_dict["folder"]["address_name"][address_name]
+        try:
+            folder = self.mapping_dict["folder"]["address_name"][address_name]
+        except Exception as e:
+            folder = "camera"
         save_path = f"{self.base_path}/{folder}/"
         try:
             picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "pi_hawk_eye")

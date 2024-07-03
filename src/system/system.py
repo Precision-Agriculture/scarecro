@@ -42,7 +42,7 @@ class System:
             self.system_config = system_config.copy()
         else:
             logging.debug(f"Using the system configuration in the configurations folder")
-            self.system_config = self.import_config("system", "system", "system")
+            self.system_config = self.import_config("system", "system")
         #Get the post office info - addresses, carriers, 
         #handlers, and messages 
         self.system_id = self.system_config.get("id", "default")
@@ -107,18 +107,18 @@ class System:
         #Get message configs
         self.messages = self.map_addresses(self.messages, self.addresses, "message_type")
         for message in self.messages.keys():
-            self.messages[message]["content"] = self.import_config("messages", message, "message")
+            self.messages[message]["content"] = self.import_config("messages", message)
         #Get handler configs
         self.handlers = self.map_addresses(self.handlers, self.addresses, "handler")
         for handler in self.handlers.keys():
-            self.handlers[handler]["content"] = self.import_config("handlers", handler, "handler")
+            self.handlers[handler]["content"] = self.import_config("handlers", handler)
         #Get carrier configs 
         self.carriers = self.map_addresses(self.carriers, self.addresses, "carrier")
         for carrier in self.carriers.keys():
-            self.carriers[carrier]["content"] = self.import_config("carriers", carrier, "carrier")
+            self.carriers[carrier]["content"] = self.import_config("carriers", carrier)
         #Get task configs 
         for task in active_tasks:
-            task_content = self.import_config("tasks", task, "task")
+            task_content = self.import_config("tasks", task)
             self.tasks[task] = task_content
 
     #Scheduler exception listener - SDL originally 
@@ -209,7 +209,7 @@ class System:
         return base_dict
 
 
-    def inheritance(self, path_name, module_name, attribute, content):
+    def inheritance(self, path_name, module_name, content):
         """
         This takes in content as well as the configuration path informatino
         (module, attribute, and path) and looks for and applies any inherited
@@ -221,9 +221,9 @@ class System:
             sub_content_config = {}
             for sub_content_name in inherited_content:
                 #Recursive call - get the inherited value
-                sub_content = self.get_import_content(path_name, sub_content_name, attribute)
+                sub_content = self.get_import_content(path_name, sub_content_name)
                 #Also run inheritance recursively on the subcontent: 
-                sub_content = self.inheritance(path_name, sub_content_name, attribute, sub_content)
+                sub_content = self.inheritance(path_name, sub_content_name, sub_content)
                 #Read in the inheritance first 
                 sub_content_config = self.deep_update(sub_content_config, sub_content)
             content = self.deep_update(sub_content_config, content)
@@ -231,7 +231,7 @@ class System:
         return content 
 
 
-    def get_import_content(self, path_name, module_name, attribute):
+    def get_import_content(self, path_name, module_name, attribute="config"):
         """
         This takes in the path to the the imported, the module name 
         inside the folder path, and the attribute name to import
@@ -247,7 +247,7 @@ class System:
 
 
     #Here, perform inheritance and sensor name substitution  
-    def import_config(self, config_folder, module_name, attribute):
+    def import_config(self, config_folder, module_name, attribute="config"):
         """
         General import function for configs. Takes in the sub-config
         folder, the module name within the folder, and the attribute, 
@@ -261,18 +261,18 @@ class System:
         #Run inheritance and substiturion on the content 
         # content = self.inheritance(path_name, module_name, attribute, content)
         # content = self.substitution_content(module_name, content)
-        content = self.complete_content(path_name, module_name, attribute, content)
+        content = self.complete_content(path_name, module_name, content)
         return content
 
 
-    def complete_content(self, path_name, module_name, attribute, content):
+    def complete_content(self, path_name, module_name, content):
         """ 
         This function runs just the inheritance and substituion operations
         on a piece of config content 
         Takes in: path name, module name, attribute name, and original config content
         Returns: completed content 
         """
-        content = self.inheritance(path_name, module_name, attribute, content)
+        content = self.inheritance(path_name, module_name, content)
         content = self.substitution_content(module_name, content)
         return content
 
@@ -284,7 +284,7 @@ class System:
         path_name = f"configs.addresses"
         for address_name in active_addresses:
             #Get the content
-            content = self.get_import_content(path_name, address_name, "address")
+            content = self.get_import_content(path_name, address_name)
             message_type = content.get("message_type", None)
             #If we have multiple messages in one address, break them all out into separate messages
             #Note that you can't inherit from a an address with multiple messages 
@@ -293,10 +293,10 @@ class System:
                     sub_address_name = f"{address_name}_{sub_message_type}"
                     sub_content = copy.deepcopy(content)
                     sub_content["message_type"] = sub_message_type
-                    sub_content = self.complete_content(path_name, sub_address_name, "address", sub_content)
+                    sub_content = self.complete_content(path_name, sub_address_name, sub_content)
                     self.addresses[sub_address_name] = sub_content
             else:
-                new_content = self.complete_content(path_name, address_name, "address", content)
+                new_content = self.complete_content(path_name, address_name, content)
                 self.addresses[address_name] = new_content
 
 
@@ -877,7 +877,7 @@ class System:
                 handler_dict["object"] = handler_item
                 logging.debug(f"Initialized handler {handler_name}")
         except Exception as e:
-            logging.error(f"Could not initialize handler {handler_name}")
+            logging.error(f"Could not initialize handler {handler_name}, {e}", exc_info=True)
 
     def init_carrier(self, carrier_name):
         """

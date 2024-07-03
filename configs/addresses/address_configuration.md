@@ -1,7 +1,7 @@
 ## Addresses
 Addresses should be a dictionary of the following form:
 
-address = {
+config = {
     "inheritance": a name of list of other names addresses to inherit from
 
     "message_type": the type of message this address deals with. If this is a list, the underlying system will break the address into multiple addresses by message type, naming them <address_name>_<message_type>. An address cannot inherit from another address with multuple messages. 

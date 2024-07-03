@@ -3,13 +3,14 @@ from datetime import timezone
 from datetime import date
 import pytz
 from dateutil import tz 
+import logging 
+
 
 
 class SwitchdocSensors:
     """
-    This class uses code and functions from Cyril Sebastian's public
-    "Renogy-BT" github repo located here: https://github.com/cyrils/renogy-bt/tree/main/renogybt
-    to parse the information. The copyright belongs to Cyril Sebastian. 
+    This class uses information from Switchdoc Labs to parse 
+    sensor information 
     """
     def __init__(self, config={}, send_addresses={}, receive_addresses={}, message_configs={}):
         #These are optional - if your program needs them 
@@ -231,7 +232,7 @@ class SwitchdocSensors:
         batteryPower =  round(float(state["batterycurrent"])* float(state["batteryvoltage"])/1000.0, 3)
         loadPower  =  round(float(state["loadcurrent"])* float(state["loadvoltage"])/1000.0, 3)
         solarPower =  round(float(state["solarpanelcurrent"])* float(state["solarpanelvoltage"])/1000.0, 3)
-        batteryCharge = round(returnPercentLeftInBattery(state["batteryvoltage"], 4.2), 3)
+        batteryCharge = round(self.returnPercentLeftInBattery(state["batteryvoltage"], 4.2), 3)
         myaqi = aqi.to_aqi([
         (aqi.POLLUTANT_PM25, state['PM2.5A']),
         (aqi.POLLUTANT_PM10, state['PM10A'])
@@ -289,7 +290,7 @@ class SwitchdocSensors:
                 batteryPower =  float(state["batterycurrent"])* float(state["batteryvoltage"])/1000.0
                 loadPower  =  float(state["loadcurrent"])* float(state["loadvoltage"])/1000.0
                 solarPower =  float(state["solarpanelcurrent"])* float(state["solarpanelvoltage"])/1000.0
-                batteryCharge = returnPercentLeftInBattery(state["batteryvoltage"], 4.2) 
+                batteryCharge = self.returnPercentLeftInBattery(state["batteryvoltage"], 4.2) 
                 new_dict["deviceid"] = state["deviceid"]
                 new_dict["protocolversion"] = state["protocolversion"]
                 new_dict["softwareversion"] = state["softwareversion"]
@@ -315,6 +316,8 @@ class SwitchdocSensors:
                 #Also the time
                 utc_curr_time = datetime.now(tz=pytz.UTC)
                 time_string = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+                print("-----------HERE-----------")
+                print(time_string)
                 new_dict["time"] = time_string
                 logging.info(f"Thunder Board Reading: {new_dict}")
         except Exception as e:
@@ -339,7 +342,7 @@ class SwitchdocSensors:
             data_dict["deviceid"] = var["deviceid"]
             #Temp and humidity 
             wTemp = var["temperature"]
-            #wTemp = twos_comp(var["temperature"], 16);
+            #wTemp = self.twos_comp(var["temperature"], 16);
             ucHumi = var["humidity"]
 
             wTemp = wTemp / 10.0
@@ -388,7 +391,7 @@ class SwitchdocSensors:
                 data_dict["pressure_sea_level"] = BarometricPressureSeaLevel
             return data_dict
         except Exception as e:
-            logging.info("Could not clean and build weather_rack_3", exc_info=True)
+            logging.error("Could not clean and build weather_rack_3", exc_info=True)
             return {}
 
     def parse_wr3_power(self, state):
@@ -409,7 +412,7 @@ class SwitchdocSensors:
             data_dict['time'] = time_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")
             return data_dict
         except Exception as e:
-            logging.info("Could not clean and build wr3_power message", exc_info=True)
+            logging.error("Could not clean and build wr3_power message", exc_info=True)
             return {} 
 
     def process_switchdoc_sensor_message(self, message_type, messages):
@@ -419,19 +422,20 @@ class SwitchdocSensors:
         """
         try:
             for message in messages:
+                new_message = {}
                 sub_message = message.get("msg_content", {})
                 if message_type == "weather_rack":
                     new_message = self.parse_weather_rack(sub_message)
                 elif message_type == "solar_max": 
                     new_message = self.parse_solar_max(sub_message) 
                 elif message_type == "aqi":
-                    self.parse_aqi(sub_message)  
+                    new_message = self.parse_aqi(sub_message)  
                 elif message_type == "thunder_board":
-                    self.parse_thunder_board(sub_message) 
+                    new_message = self.parse_thunder_board(sub_message) 
                 elif message_type == "weather_rack_3":
-                    self.parse_weather_rack_3(sub_message) 
+                    new_message = self.parse_weather_rack_3(sub_message) 
                 elif message_type == "wr3_power":
-                    self.parse_wr3_power(sub_message) 
+                    new_message = self.parse_wr3_power(sub_message) 
                 if new_message == {}:
                     #logging.debug(f"Error processing weather rack message")
                     return [] 

@@ -272,6 +272,7 @@ class MQTT_Client():
                         #Send only if we haven't already sent it
                         if entry_id not in sent_entries:
                             content = message.get("msg_content", {})
+                            #Add the gateway id it came from 
                             content["gateway_id"] = self.system_id
                             return_val = self.publish(topic, content)
                     self.sent_entries[topic] = new_entry_ids

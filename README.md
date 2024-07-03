@@ -15,6 +15,7 @@ This repository is a work in progress. An initial version of SCARECRO is impleme
     * other
     * system
     * tasks
+    * updater 
 
 More about configurations is explained later in the ReadMe 
 * __examples__: This folder will contain useful example code. Currently not implemented. 
