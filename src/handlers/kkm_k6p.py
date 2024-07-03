@@ -1,3 +1,4 @@
+import logging 
 import sys 
 sys.path.append("../scarecro")
 import util.util as util 

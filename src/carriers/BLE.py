@@ -2,6 +2,7 @@ import sys
 import time 
 import logging 
 import json 
+import logging 
 sys.path.append("../scarecro")
 import system_object
 import util.util as util 
