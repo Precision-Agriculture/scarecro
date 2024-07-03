@@ -23,7 +23,7 @@ for database in client.database_names():
                 col = getattr(db, collection_name)
                 num_docs = col.find().count()
                 print(f"Number of Documents {num_docs}")
-                last_n_docs = col.find().sort({"$_id":1}).limit(n)
+                last_n_docs = col.find().sort({"$_id", 1}).limit(n)
                 print(f"Last {n} Documents:")
                 for doc in last_n_docs:
                     json.dumps(doc, indent=4)
