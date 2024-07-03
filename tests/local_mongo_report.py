@@ -14,7 +14,7 @@ for database in client.database_names():
     try:
         print(f"Database: {database}")
         db = getattr(client, database)
-        print("Collections"):
+        print("Collections")
         collections = list(db.collection_names())
         print(collections)
         for collection_name in collections: 
