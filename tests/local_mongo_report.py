@@ -21,7 +21,7 @@ for database in client.database_names():
             try:
                 print(f"Collection Name {collection_name}")
                 col = getattr(db, collection_name)
-                num_docs = col.count_documents({})
+                num_docs = col.find().count()
                 print(f"Number of Documents {num_docs}")
                 last_n_docs = col.find().sort({"$_id":1}).limit(n)
                 print(f"Last {n} Documents:")
