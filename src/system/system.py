@@ -60,6 +60,13 @@ class System:
         for task_name in self.tasks:
             self.init_task(task_name)
 
+        updater = system_config.get("updater", None)
+        if updater:
+            updater_config = self.import_config("updater", updater)
+            self.updater = updater_config
+        else:
+            self.updater = {}
+
         #Init the scheduler 
         self.init_scheduler()
 
@@ -72,6 +79,12 @@ class System:
         
     def return_system_id(self):
         return self.system_id
+
+    def return_system_updater(self):
+        return self.updater.copy()
+
+    def set_system_updater(self, new_updater):
+        self.updater = new_updater.copy()
 
     def start_system(self):
         """
@@ -258,9 +271,7 @@ class System:
         path_name = f"configs.{config_folder}"
         #Get the content
         content = self.get_import_content(path_name, module_name, attribute)
-        #Run inheritance and substiturion on the content 
-        # content = self.inheritance(path_name, module_name, attribute, content)
-        # content = self.substitution_content(module_name, content)
+        #Run inheritance and substitution on the content 
         content = self.complete_content(path_name, module_name, content)
         return content
 

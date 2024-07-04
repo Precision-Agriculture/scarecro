@@ -4,6 +4,9 @@ import logging
 import pymongo 
 import json 
 
+#This test gives you the count for each collection in each database
+#As well as the last two records in the database 
+
 n = 2 
 client = pymongo.MongoClient("127.0.0.1:27017")
 print("---------Local Mongo Database Report--------------")
