@@ -110,8 +110,8 @@ class Tempest_UDP():
         :return: The `data` variable is being returned from the `receive` method.
         """
         data, addr = s.recvfrom(4096)
-        self.logger.debug("Message from: ", addr)
-        self.logger.debug("Received message: ", data.decode("utf-8"))
+        self.logger.debug(f"Message from: {addr}")
+        self.logger.debug(f"Received message: {data.decode("utf-8")}")
         return data
 
     def receive(self, address_names, duration):
