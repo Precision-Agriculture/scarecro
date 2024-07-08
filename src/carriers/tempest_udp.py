@@ -134,7 +134,8 @@ class Tempest_UDP():
 
                             observations = self.process_data(data_json)
                             self.logger.info(f"Tempest message {observations}")
-                            self.envelope_and_post_message(observations, address_names)
+                            if observations != {}:
+                                self.envelope_and_post_message(observations, address_names)
                 except socket.error:
                     self.logger.error("Socket error occured! Reinitializing socket!")
                     self.socket_error_handler()
