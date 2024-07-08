@@ -111,7 +111,7 @@ class Tempest_UDP():
         """
         data, addr = s.recvfrom(4096)
         self.logger.debug(f"Message from: {addr}")
-        self.logger.debug(f"Received message: {data.decode("utf-8")}")
+        self.logger.debug(f'Received message: {data.decode("utf-8")}')
         return data
 
     def receive(self, address_names, duration):
