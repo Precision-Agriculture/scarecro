@@ -152,6 +152,7 @@ class Tempest_UDP():
         log message is generated instead of returning the observations dictionary. If the data type does
         not match any of the given types then it is a hub status message and it will be logged.
         """
+        observations = {} 
         if data['type'] == 'obs_st':
             #this will be temptest observation messages
             #adds values to OBS_ST_MAP
