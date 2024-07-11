@@ -102,10 +102,9 @@ class MQTT_Client():
         if self.include_topic:
             message_body["topic"] = topic_name
         if address_name:
-            #Post it
+            #Envelope and post it
             enveloped_message = system_object.system.envelope_message(message_body, address_name)
             system_object.system.post_messages(enveloped_message, address_name)
-
 
     def get_subscriptions(self, addresses):
         """

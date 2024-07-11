@@ -117,22 +117,34 @@ class System:
         active_tasks = self.system_config.get("tasks", [])
         #import addresses - configs, message breakup, inheritance and substitution 
         self.import_addresses(active_addresses)
-        #Get message configs
-        self.messages = self.map_addresses(self.messages, self.addresses, "message_type")
-        for message in self.messages.keys():
-            self.messages[message]["content"] = self.import_config("messages", message)
-        #Get handler configs
-        self.handlers = self.map_addresses(self.handlers, self.addresses, "handler")
-        for handler in self.handlers.keys():
-            self.handlers[handler]["content"] = self.import_config("handlers", handler)
-        #Get carrier configs 
-        self.carriers = self.map_addresses(self.carriers, self.addresses, "carrier")
-        for carrier in self.carriers.keys():
-            self.carriers[carrier]["content"] = self.import_config("carriers", carrier)
+        #Import tasks as well 
         #Get task configs 
         for task in active_tasks:
             task_content = self.import_config("tasks", task)
             self.tasks[task] = task_content
+
+
+        #Get message configs
+        self.messages = self.map_addresses(self.messages, self.addresses, "message_type")
+        self.messages = self.map_tasks(self.messages, self.tasks, "message_type")
+        for message in self.messages.keys():
+            self.messages[message]["content"] = self.import_config("messages", message)
+        #Get handler configs
+        self.handlers = self.map_addresses(self.handlers, self.addresses, "handler")
+        self.handlers = self.map_tasks(self.handlers, self.tasks, "handler")
+        for handler in self.handlers.keys():
+            self.handlers[handler]["content"] = self.import_config("handlers", handler)
+        #Get carrier configs 
+        self.carriers = self.map_addresses(self.carriers, self.addresses, "carrier")
+        self.carriers = self.map_tasks(self.carriers, self.tasks, "carrier")
+        for carrier in self.carriers.keys():
+            self.carriers[carrier]["content"] = self.import_config("carriers", carrier)
+        
+        #Change is here!!! 
+        # #Get task configs 
+        # for task in active_tasks:
+        #     task_content = self.import_config("tasks", task)
+        #     self.tasks[task] = task_content
 
     #Scheduler exception listener - SDL originally 
     def ap_my_listener(self, event):
@@ -331,13 +343,39 @@ class System:
         it's "addresses" field  
         """
         for address_name, address_val in addresses.items():
-            content_key = address_val.get(address_key)
+            content_key = address_val.get(address_key, None)
             #If that doesn't exist in the content dict, add it
             if content_key != None:
                 if content_dict.get(content_key, None) == None:
                     content_dict[content_key] = self.return_default_mapping_dict()
             #Append this address to this content's address fields
                 content_dict[content_key]["addresses"].append(address_name)
+        return content_dict
+
+    def map_tasks(self, content_dict, tasks, task_key):
+        """
+        This function takes in a blank dictionary, and maps the tasks
+        it takes in that are associated with a specific content type
+        (address key provided) 
+        Returns: the inputed dictionary, now mapped to addresses in
+        it's "addresses" field  
+        """
+        for task_name, task_config in tasks.items():
+            #If we are looking for task carriers or handlers 
+            if task_key == "carrier" or task_key == "handler": 
+                content_key = task_config.get("source_type", None)
+                #Only return if matching, and then return name 
+                if content_key != task_key: 
+                    content_key = None
+                else:
+                    content_key = task_config.get("config_name", None)
+            else:
+                content_key = task_config.get(task_key, None)
+            #If the key is in the task config BUT 
+            #doesn't exist in the content dict, add it
+            if content_key != None:
+                if content_dict.get(content_key, None) == None:
+                    content_dict[content_key] = self.return_default_mapping_dict()
         return content_dict
 
     def print_configs(self, config_types):
@@ -456,7 +494,10 @@ class System:
                         overall_function(arguments, "on_message")
                     else:
                         #Like from a task (need to still run entry ids, I think) #MARKED #CHANGE 
-                        overall_function(arguments, entry_ids=entry_ids, message_type=message_type)
+                        if arguments == {}:
+                            overall_function(entry_ids=entry_ids, message_type=message_type)
+                        else:
+                            overall_function(arguments, entry_ids=entry_ids, message_type=message_type)
                 except Exception as e:
                     logging.error(f"Could not run {job_id} on on_message trigger for {message_type}", exc_info=True)
 
@@ -497,6 +538,41 @@ class System:
                 self.check_message_triggers(message_type, entry_ids=entry_ids)
         except Exception as e:
             logging.error(f"Could not post message on address {address_name}", exc_info=True)
+
+        if logging.root.level <= logging.DEBUG: 
+            self.print_message_entries_dict()
+        return result
+
+    def post_messages_by_type(self, messages, message_type):
+        """
+        Takes in a single message or list of messages,
+        And the name of the address
+
+        Return True or False with result of adding the message
+        or sending it. 
+        """
+        result = False
+        try:
+            #Get the handler and function
+            if not isinstance(messages, list):
+                messages = [messages]
+            #Add the messages, get the return message ids 
+            entry_ids = []
+            for message in messages:
+                try:
+                    sub_result = self.add_message(message_type, message)
+                    if sub_result != False:
+                        entry_ids.append(sub_result)
+                        logging.debug(f"Successfully added {message_type}")
+                except Exception as e:
+                    logging.error(f"Could not add message of type {message_type}", exc_info=True)
+            if len(entry_ids) >= 1:
+                #We were able to add at least one message 
+                result = True
+                logging.debug(f"Checking message triggers")
+                self.check_message_triggers(message_type, entry_ids=entry_ids)
+        except Exception as e:
+            logging.error(f"Could not post message of type {message_type}", exc_info=True)
 
         if logging.root.level <= logging.DEBUG: 
             self.print_message_entries_dict()
@@ -573,6 +649,31 @@ class System:
         #Get message type from address 
         address_config = self.addresses.get(address_name, {})
         message_type = address_config.get("message_type", "default")
+        #Get message id field and time from message definition
+        message_config = self.messages.get(message_type, {}).get("content")
+        id_field = message_config.get("id_field", "id")
+        time_field = message_config.get("time_field", "time")
+        #Try to put in the message id and time from the message
+        message_id = message_content.get(id_field, "default")
+        time_value = message_content.get(time_field, None)
+        if time_value == None:
+            time_value = util.get_today_date_time_utc()
+        #Envelope it 
+        enveloped_message = {
+            "msg_id": message_id,
+            "msg_time": time_value,
+            "msg_type": message_type,
+            "msg_content": message_content
+        }
+        logging.debug(f"Enveloped message {enveloped_message}")
+        return enveloped_message
+
+    def envelope_message_by_type(self, message_content, message_type):
+        """
+        Takes in the message content (dict expected) and address name and envelopes the 
+        message
+        Could really do this on the system object level. 
+        """
         #Get message id field and time from message definition
         message_config = self.messages.get(message_type, {}).get("content")
         id_field = message_config.get("id_field", "id")
@@ -1022,8 +1123,8 @@ class System:
                 #In case we have any tasks triggered by a message, as well 
                 #Probaby need to add message_type here as well (entry ids need to be in source)
                 if duration == "on_message":
-                    job_id = f"{task_name}_{function}_{duration}_{address_name}"
                     message_type = task_config.get("message_type", None)
+                    job_id = f"{task_name}_{function}_{duration}_{message_type}"
                     job_list = on_message_routing_dict.get(message_type, [])
                     job_list.append(job_id)
                     on_message_routing_dict[message_type] = job_list

@@ -332,8 +332,7 @@ class Mongodb():
 
     
     ######### -------------------- Updater Stuff -------------------------------- ####### 
-
-    def get_configuration(self, config_folder, config_id): 
+    def get_configuration(self, config_folder, config_name, config_id): 
         """
         Get the stored configuration based on it's config_folder
         And configuration ID 
@@ -355,84 +354,37 @@ class Mongodb():
             logging.error(f'Issue with getting config {config_id} {config_folder}; {e}', exc_info=True)
         return returned_config
             
-    def write_to_file(self, config_folder, config_name, config_content):
+    def fetch_configurations(self, message_type=None, entry_ids=[]):
+        """      
+        This function receives the message type given by the
+        on_message trigger as well as the entry id of the 
+        message. This function picks up the appropriate message 
+        It then posts a fetched configuration message to the system
         """
-        Get config folder, name, and content
-        And write to a file a the awaiting directory 
-        """
-        return_val = False
-        try:
-            #Might want to configure 
-            await_dir = "generated_data/awaiting_configs/"
-            full_name = f"{await_dir}{config_folder}{config_name}.py"
-            content_to_write = f"config = {config_content}"
-            file_handle = open(full_name, "w")
-            file_handle.write(content_to_write)
-            file_handle.close()
-            return_val = True
-        except Exception as e:
-            logging.error(f"Could not write {config_name} {config_folder} to file; {e}", exc_info=True)
-            
-
-
-    def update_updater_file(self):
-        return_val = False
-        try:
-            curr_updater = system_object.system.return_system_updater()
-            updater_config = curr_updater.get("updater", {})
-            #This banks on the file being named "updater" - that is 
-            #A hard requirement 
-            updater_id = updater_config.get("updater", None)
-            new_updater_entry = self.get_configuration("updater", updater_id)
-            new_updater_config = new_updater_entry("config_content")
-            #Write it to file 
-            self.write_to_file("updater", "updater", new_updater_config)
-            system_object.system.set_system_updater(new_updater_config)
-        except Exception as e:
-            logging.error(f"Could not update updater file {e}", exc_info=True)
-
-    def update_all_configs(self, updates):
-        """
-        Updates all the configurations 
-        Need to change the control flow here
-        Since the gateways can't directly 
-        Interact with the database in mongo's case 
-        """
-        if updates != {}:
-            for folder, config_pairs in updates.items()
-                for config_name, config_id in config_pairs.items():
-                    self.get_configuration(self, folder, config_id)
-                    self.write_to_file(folder, config_name, config_id)
-
+        messages = system_object.system.pickup_messages_by_message_type(message_type=message_type, entry_ids=entry_ids)
+        for single_message in messages:
+            try:
+                #Get the content
+                single_message_content = single_message.get("msg_content", {})
+                #Get the relevant keys
+                config_folder = single_message_content.get("config_folder", None)
+                config_name = single_message_content.get("config_name", None)
+                config_id = single_message_content.get("config_id", None)
+                #Query for the config
+                config = self.get_configuration(config_folder, config_name, config_id)
+                #Create the new message by adding the config 
+                logging.debug(f"Configuration Fetched: {config}")
+                if config != {}:
+                    fetched_message = single_message_content.copy()
+                    fetched_message["config_content"] = config
+                    fetched_message["id"] = system_object.system.return_system_id()
+                    #Envelope and Post It 
+                    enveloped_message = system_object.system.envelope_message_by_type(fetched_message, "fetched_config")
+                    system_object.system.post_messages_by_type(enveloped_message, "fetched_config")
+            except Exception as e:
+                logging.error(f"Could not fetch new configuration for {single_message}; {e}", exc_info=True)
     
-    def update_configs(self, message_type=None, entry_ids=[]): 
-        """
-        This function updates the configurations based on a 
-        request to update. 
-        """
-        #First, pick up the request message 
-        messages = system_object.system.pickup_messages_by_message_type(self, message_type=message_type, entry_ids=entry_ids)
-        #In this case, only want most recent message, maybe? 
-        #May want to change that in the future 
-        recent_message = messages[-1]
-        request_content = recent_message.get("msg_content", {})
-        updates = request_content.get("updates", {})
-        updater = updates.get("updater", [])
-        #If we need to update everything, or update the updater file 
-        update_succ = run_messages_through_handler
-        if updates == {} or updater != []: 
-            update_succ = self.update_updater_file()
-        if update_succ: 
-            #Go ahead and try to update everything
-            if updates == {}:
-                updates = system_object.system.return_system_updater()
-            self.update_all_configs(updates)
-
-
-
-        
-
-
+    # Receive and Send Functions 
     def receive(self, address_names, duration):
         """
         Takes in the address names and the duration
