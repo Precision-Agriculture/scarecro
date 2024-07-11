@@ -34,13 +34,23 @@ system_config = {
         "fetch_updates",
         "update_config"
     ],
+    "updater": "updater"
 }
 
 #Init the 
 system_object.system = system_class.return_object(system_config=system_config)
 system_object.system.start_scheduler()
+#Print system update variable 
+print("Before request for update, system update variable:")
+update_status = system_object.system.return_system_updated()
+print(update_status)
 time.sleep(2)
+
 system_object.system.post_messages_by_type(enveloped_message, "remote_config_updated")
+
+print("After request for update, system update variable:")
+update_status = system_object.system.return_system_updated()
+print(update_status)
 #Post a request update message and
 #See if the system fetches the right config 
 while True:

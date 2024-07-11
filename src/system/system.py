@@ -35,6 +35,9 @@ class System:
         And initializes the system 
 
         """
+        #Vairables 
+        self.system_updated = False
+        self.system_lost_connection = False
         self.system_config = {}
         #Get the system config 
         if system_config:
@@ -73,10 +76,33 @@ class System:
         #If debug, do some prints
         if logging.root.level <= logging.DEBUG: 
             logging.debug("System Configurations")
-            self.print_configs(["addresses", "messages", "carriers", "handlers"])
+            self.print_configs(["addresses", "messages", "carriers", "handlers", "tasks"])
             self.print_scheduler_dict()
             self.print_on_message_routing_dict()
         
+    def return_system_updated(self):
+        #Maybe read this from a file? 
+        return self.system_updated
+
+    def return_system_lost_connection(self):
+        #Maybe read this from a file?
+        return self.system_lost_connection
+    
+    def set_system_updated(self, value):
+        """
+        Pass in True or False to set the system
+        updated value 
+        """
+        self.system_updated = value 
+
+    def set_system_lost_connection(self, value):
+        """
+        Pass in True or False to set the system 
+        lost connection value 
+        """
+        self.system_lost_connection = value 
+
+
     def return_system_id(self):
         return self.system_id
 

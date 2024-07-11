@@ -1,8 +1,12 @@
 import time 
 import os 
 import logging  
-#import shutil
 from distutils.dir_util import copy_tree
+from datetime import datetime, timedelta, tzinfo
+from datetime import timezone
+from datetime import date
+import pytz
+from dateutil import tz 
 
 import sys 
 sys.path.append("../scarecro")
@@ -44,42 +48,89 @@ class SystemUpdate:
         #TODO: Make sure this directory exists first,
         #And is filled before doing! 
         copy_tree(self.backup_dir, self.config_dir)
+  
+
+    def write_to_file(self, config_folder, config_name, config_content):
+        """
+        Get config folder, name, and content
+        And write the file to the configs director 
+        """
+        return_val = False
+        try:
+            #Might want to configure 
+            full_name = f"{self.config_dir}/{config_folder}/{config_name}.py"
+            content_to_write = f"config = {config_content}"
+            file_handle = open(full_name, "w")
+            file_handle.write(content_to_write)
+            file_handle.close()
+            logging.debug(f"Wrote {full_name}")
+            return_val = True
+        except Exception as e:
+            logging.error(f"Could not write {config_name} {config_folder} to file; {e}", exc_info=True)
+        return return_val
+
+    def post_success_update_message(self, config_folder, config_name, config_id):
+        try:
+            time_utc = util.get_today_date_time_utc()
+            msg = {
+                "id": system_object.system.return_system_id(),
+                "time": time_utc,
+                "config_folder": config_folder,
+                "config_name": config_name,
+                "config_id": config_id
+            }
+            enveloped_message = system_object.system.envelope_message_by_type(msg, "local_config_updated")
+            system_object.system.post_messages_by_type(enveloped_message, "local_config_updated")
+        except Exception as e:
+            logging.error(f"Could not post success message {config_folder} {config_name} {config_id}; e", exc_info=True)
     
-    #Actually, no 
+    def check_back_up(self):
+        """
+        Back up the files if we don't already have a pending
+        Update 
+        """
+        update_pending = system_object.system.return_system_updated()
+        if update_pending == False:
+            self.back_up_current_system()
 
-    # def receive_remote_config_update_message(self, message_type=None, entry_ids=[]):
-    #     """      
-    #     This function receives the message type given by the
-    #     on_message trigger as well as the entry id of the 
-    #     message. This function picks up the message based 
-    #     on the trigger. 
-    #     It sends a message requesting that the configuration
-    #     be fetched.  
-    #     """
-    #     #First, pick up the request message 
-    #     messages = system_object.system.pickup_messages_by_message_type(self, message_type=message_type, entry_ids=entry_ids)
-    #     #In this case, only want most recent message, maybe? 
-    #     #May want to change that in the future 
-    #     #recent_message = messages[-1]
-    #     for message in messages:
-    #         pass 
-
-
-
-
-    def request_updates(self, config_ids=[]):
-        #If config ids is an empty list, write EVERYTHING 
-        #In the update list. 
-        #Otherwise - check if the config
-        #Check configs on wake up?  
-        #Send a message requesting the new updates 
-        pass 
-        
-    def update_files(self):
-        pass 
-        #Wait, with a timeout, for the updated configs to populate a given folder 
-        #If the updates populate in the folder, copy them over
-        #copy_tree(self.await_dir, self.config_dir)
+    def update_files(self, message_type=None, entry_ids=[]):
+        """
+        Receives a 'fetched config' message from an on_message
+        Trigger. Updates the configuration if it uses it. 
+        """
+        try:
+            #First, back up if we don't have an update pending 
+            self.check_back_up()
+            #Then, see if we need to update 
+            curr_updater = system_object.system.return_system_updater()
+            messages = system_object.system.pickup_messages_by_message_type(message_type=message_type, entry_ids=entry_ids)
+            for message in messages: 
+                try:
+                    #See if we need to update based on our updater file 
+                    #Get the config id, config name, config folder
+                    new_update_message = message.get("msg_content", {})
+                    msg_config_folder = new_update_message.get("config_folder", None)
+                    msg_config_id = new_update_message.get("config_id", None)
+                    msg_config_name = new_update_message.get("config_name", None)
+                    #If the keys match in the updater, make the update
+                    updater_entry = curr_updater.get(msg_config_folder, {})
+                    updater_match = updater_entry.get(msg_config_name, None)
+                    if updater_match == msg_config_id:
+                        msg_config_content = new_update_message.get("config_content", {})
+                        if msg_config_content != {}: 
+                            succ = self.write_to_file(msg_config_folder, msg_config_name, msg_config_content)
+                            #If successful
+                            if succ:
+                                #Change the status to pending update  
+                                system_object.system.set_system_updated(True)
+                                #write a success message 
+                                self.post_success_update_message(msg_config_folder, msg_config_name, msg_config_id)
+                except Exception as e:
+                    logging.error(f"Error running for {message}; {e}", exc_info=True)
+        except Exception as e:
+            logging.error(f"Error in update files task for {message_type}; {e}", exc_info=True)   
+                 
+   
         #Send an 'updated' succeed message
         #   -> Then reboot
         #If not, send an 'update failed' message
@@ -113,7 +164,6 @@ class SystemUpdate:
 #Solve it by having the updater file pulled first and checking for any kinds of 
 #New updates (if blank) - add to pulling updates. 
 
-#Rest of update stuff going to have to deal with MongoDB 
 
 def return_object(config):
     return SystemUpdate(config)

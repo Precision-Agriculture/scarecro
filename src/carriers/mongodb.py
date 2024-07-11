@@ -348,7 +348,7 @@ class Mongodb():
             if configuration == []:
                 logging.debug(f"No configuration found")
             else:
-                returned_config = configuration[0]
+                returned_config = configuration[0].get("config_content", {})
         except Exception as e:
             self.reconnect()
             logging.error(f'Issue with getting config {config_id} {config_folder}; {e}', exc_info=True)
