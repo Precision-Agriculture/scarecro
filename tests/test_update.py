@@ -12,11 +12,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %
 enveloped_message = {
             "msg_id": 3,
             "msg_time": "now",
-            "msg_type": "remote_config_updated",
+            "msg_type": "connection_status",
             "msg_content": {
-                    "id": "system_middle_agent_test",
+                    "id": "mqtt",
                     "time": "now",
-                    "config_folder": "addresses",
+                    "connection_status": "addresses",
                     "config_name": "bmp280_in",
                     "config_id": "bmp280_in_gateway",
                     #"config_id": "bmp280_in_gateway_wrong" 
@@ -29,6 +29,7 @@ system_config = {
     "addresses": [
         #"mongo_cloud_immediate",
         #"cloud_mqtt_receive"
+        "cloud_mqtt_send_immediate"
     ],
     "tasks":[
         "fetch_updates",

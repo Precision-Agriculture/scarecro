@@ -24,6 +24,7 @@ class MQTT_Client():
         """
         #arguments passed in 
         self.config = config.copy() 
+        self.monitor_connection = self.config.get("monitor_connection", False)
         self.send_addresses = send_addresses.copy()
         self.receive_addresses = receive_addresses.copy()
         self.message_configs = message_configs.copy()
@@ -42,6 +43,8 @@ class MQTT_Client():
         self.protocol_num = self.config.get("version", 5)
         #if self.protocol_num == 5:
         self.protocol = paho.MQTTv5
+        self.num_missed_connections = 0
+        self.alerted_lost_connection = False 
         #else:
         #    self.protocol = paho.MQTTv3
         if self.protocol_num == 5:
@@ -195,6 +198,37 @@ class MQTT_Client():
                 except Exception as e:
                     logging.error(f'Could not loop start client {self.client_id}', exc_info=True)
 
+    
+    
+    def post_lost_connection_message(self):
+        pass
+
+    def post_restored_connection_message(self): 
+        pass 
+    
+    def check_connection_status(self, rc): 
+        """
+        This function checks that status of the MQTT
+        message send to determine if a connection was 
+        lost. This might be something to enable on the 
+        configuration. 
+        If the connection is lost, it posts a connection 
+        lost message
+        If a previously lost connection was restored, it 
+        posts a connection restorted message 
+        """
+        if rc == 3:
+            self.num_missed_connections += 1
+            if self.num_missed_connections > 2 and self.alerted_lost_connection = False:
+                self.post_lost_connection_message()
+                self.alerted_lost_connection = True  
+        else:
+            self.num_missed_connections = 0 
+            if self.alerted_lost_connection == False:
+                self.post_restored_connection_message()
+                self.alerted_lost_connection = False
+
+    
     def publish(self, topic, message):
         """
         publish the message on the topic 
@@ -208,6 +242,10 @@ class MQTT_Client():
                 return_val = False
             else:
                 return_val = True
+            #If we are monitoring the connection, go ahead and 
+            #check for it. 
+            if self.monitor_connection:
+                self.check_connection_status(msgpub.rc)
         except Exception as e:
             logging.error(f'Could not publish message {self.client_id}', exc_info=True)
             return_val = False
