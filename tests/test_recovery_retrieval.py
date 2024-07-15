@@ -15,7 +15,8 @@ system_config = {
     "id": "test_device",
     "addresses": [
         #"gateway_stats_in",
-        "cloud_mqtt_send_immediate"
+        "cloud_mqtt_send_immediate",
+        "mongo_local_immediate"
     ],
     "tasks":[
         "handle_request_for_recovery_data",
@@ -31,7 +32,7 @@ enveloped_message = {
             "msg_content": {
                     "id": "test_device",
                     "time": "now",
-                    "lost_connection_time": "2024-07-15T21:40:22.045685"
+                    "lost_connection_time": "2024-07-15T21:40:22.045685",
                     "restored_connection_time": "2024-07-15T21:42:22.045685"
                 }
         }

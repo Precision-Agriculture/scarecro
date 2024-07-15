@@ -59,11 +59,11 @@ class Mongodb():
             collection = db_config.get("collection", None)
             collection_address_mapping[collection] = address_name
             address_collection_mapping[address_name] = collection
-            collection_message_mapping[collection] = message
+            collection_message_mapping[collection] = message_type
             #Might be more than one
-            collection_list = message_collection_mapping.get(message, [])
+            collection_list = message_collection_mapping.get(message_type, [])
             collection_list.append(collection)
-            message_collection_mapping[message] = collection_list
+            message_collection_mapping[message_type] = collection_list
         self.collection_address_mapping = collection_address_mapping
         self.address_collection_mapping = address_collection_mapping
         self.message_collection_mapping = message_collection_mapping
@@ -366,7 +366,7 @@ class Mongodb():
             message["time"] = util.get_today_date_time_utc()
             message["recovery_data"] = recovery_data.copy()
             enveloped_message = system_object.system.envelope_message_by_type(restored_connection_message, message_type)
-                system_object.system.post_messages_by_type(enveloped_message, message_type)
+            system_object.system.post_messages_by_type(enveloped_message, message_type)
         except Exception as e:
             logging.error(f"Could not post recovery data message from mongodb; {e}", exc_info=True)
     
@@ -393,17 +393,17 @@ class Mongodb():
                     try:
                         #Get the recovery data 
                         message_type = self.collection_message_mapping[single_collection]
-                        entries = get_all_records_in_time_range(lost_connection_time, restored_connection_time, message_type, single_collection)
+                        entries = self.get_all_records_in_time_range(lost_connection_time, restored_connection_time, message_type, single_collection)
                         #If the recovery data ain't empty, add it 
                         if entries != []:
                             recovery_data[message_type] = entries
                     except Exception as e:
-                        logging.error(f"Could not get recovery entries for {collection_name}; {e}", exc_info=True)
+                        logging.error(f"Could not get recovery entries for {single_collection}; {e}", exc_info=True)
                 #If we actually have some recovery data 
                 if recovery_data != {}:
                     self.post_recovery_data_message(msg_content, recovery_data)
         except Exception as e:
-            logging.error(f"MongoDB could not fetch recovery data {e}"; exc_info=True)
+            logging.error(f"MongoDB could not fetch recovery data {e};", exc_info=True)
 
 
     def handle_recovery_data_message(self, message_type=None, entry_ids=[]):
