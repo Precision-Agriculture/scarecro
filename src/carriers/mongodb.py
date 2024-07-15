@@ -365,7 +365,7 @@ class Mongodb():
             message["entity"] = "mongodb"
             message["time"] = util.get_today_date_time_utc()
             message["recovery_data"] = recovery_data.copy()
-            enveloped_message = system_object.system.envelope_message_by_type(restored_connection_message, message_type)
+            enveloped_message = system_object.system.envelope_message_by_type(message, message_type)
             system_object.system.post_messages_by_type(enveloped_message, message_type)
         except Exception as e:
             logging.error(f"Could not post recovery data message from mongodb; {e}", exc_info=True)
