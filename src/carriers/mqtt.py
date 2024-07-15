@@ -358,6 +358,9 @@ class MQTT_Client():
                             content = message.get("msg_content", {})
                             #Add the gateway id it came from 
                             content["gateway_id"] = self.system_id
+                            #Since it's coming directly from mqtt,
+                            #We'll say the source is direct 
+                            content["source"] = "direct"
                             return_val = self.publish(topic, content)
                     self.sent_entries[topic] = new_entry_ids
             except Exception as e:

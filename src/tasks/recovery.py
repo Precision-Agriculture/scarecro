@@ -111,8 +111,8 @@ class DataRecovery:
         """
         system_object.system.set_system_lost_connection(False)
         try:
-            lost_connection_time = lost_connection_dict.get("time", None)
-            restored_connection_time = restored_connection_dict.get("time", None)
+            lost_connection_time = lost_connection_dict.get("time", False)
+            restored_connection_time = restored_connection_dict.get("time", False)
             message_type = "recovery_data_request"
             recovery_data_request_message = {
                 "id": system_object.system.return_system_id(),
@@ -120,8 +120,10 @@ class DataRecovery:
                 "lost_connection_time": lost_connection_time,
                 "restored_connection_time": restored_connection_time
             }
-            enveloped_message = system_object.system.envelope_message_by_type(recovery_data_request_message, message_type)
-            system_object.system.post_messages_by_type(enveloped_message, message_type)
+            #If both the times are valid 
+            if lost_connection_time and restored_connection_time:
+                enveloped_message = system_object.system.envelope_message_by_type(recovery_data_request_message, message_type)
+                system_object.system.post_messages_by_type(enveloped_message, message_type)
         except Exception as e:
             logging.error(f"Could not post request for recovery data; {e}", exc_info=True)
 

@@ -5,7 +5,7 @@ import json
 import copy 
 sys.path.append("../scarecro")
 import system_object
-
+import util.util as util 
 
 class Mongodb():
     """
@@ -48,16 +48,26 @@ class Mongodb():
         To map databases to addresses and vice versa
         """
         
-        all_addresses = {**self.send_addresses, **self.receive_addresses}
+        self.all_addresses = {**self.send_addresses, **self.receive_addresses}
         collection_address_mapping = {}
         address_collection_mapping = {}
-        for address_name, address_config in all_addresses.items():
+        collection_message_mapping = {}
+        message_collection_mapping = {}
+        for address_name, address_config in self.all_addresses.items():
             db_config = address_config.get("additional_info", {})
+            message_type = address_config.get("message_type", {})
             collection = db_config.get("collection", None)
             collection_address_mapping[collection] = address_name
             address_collection_mapping[address_name] = collection
+            collection_message_mapping[collection] = message
+            #Might be more than one
+            collection_list = message_collection_mapping.get(message, [])
+            collection_list.append(collection)
+            message_collection_mapping[message] = collection_list
         self.collection_address_mapping = collection_address_mapping
         self.address_collection_mapping = address_collection_mapping
+        self.message_collection_mapping = message_collection_mapping
+        self.collection_message_mapping = collection_message_mapping
 
     def connect(self):
         """
@@ -120,6 +130,9 @@ class Mongodb():
         return return_val
 
     def build_sub_query(self, query_dict):
+        """
+        Might be able to get rid of this #MARKED 
+        """
         try:
             op = query_dict["op"]
             field = query_dict["field"]
@@ -144,6 +157,9 @@ class Mongodb():
         return query, field 
 
     def build_query(self, query):
+        """
+        Will probably be able to get rid of this - #MARKED
+        """
         final_query = {}
         if isinstance(query, list):
             for query_dict in query:
@@ -162,6 +178,7 @@ class Mongodb():
         """
         Takes a list of records, and the data collection 
         Insert a record or list of records into the database.
+        Might need to indicate any mapping's here before insert. 
         """
         collection = self.get_collection(data_source_name) 
         return_val = True
@@ -187,6 +204,7 @@ class Mongodb():
         Update existing record with new information 
         Provide the new record to update the existing record with
         Based on a key 
+        Also might be able to get rid of this? 
         """
         return_val = False
         collection = self.get_collection(data_source_name)
@@ -253,7 +271,7 @@ class Mongodb():
 
     def get_record(self, data_source_name, record_id, record_id_field):
         """
-        Get a 1 particular record
+        Get a 1 particular record - will probably keep this 
         """
         return_val = []
         collection = self.get_collection(data_source_name)
@@ -299,38 +317,127 @@ class Mongodb():
         return []
 
 
-    #This needs to be majorly workshopped.
-    #Marked - time with no time format specificed 
-    #CHANGE - Please fix this. It makes my heart hurt.  
-    def get_all_records_in_time_range(self, min_time, max_time, time_field, ids, id_field, data_source_name):
+    ###### ---------------------Recovery Stuff-----------------------------#######
+ 
+    def get_all_records_in_time_range(self, min_time, max_time, message_type, collection_name):
         """
         Gets all the records in a given time range.
-        This returns a dictionary with the entries indexed as "main_entries" (in a list)
-        and the minimum and maximum date in the pulled range as "min_date", and "max_date",
-        in the likely case that they are different from the provided boundaries
+        This returns a list of records for a given collection in 
+        the time range. It uses the message type to determine 
+        the time field. 
         """
-        collection = self.get_collection(data_source_name)
+        #Get the message time field
+        message_config = self.message_configs.get(message_type, {})
+        time_field = message_config.get("time_field", "time")
+        collection = self.get_collection(collection_name)
         #Pull the bulk data 
+        return_list = []
         query = {}
-        if ids != [] and id_field != "error":
-            query[id_field] = {"$in": ids }
-        if time_field != "error":
-            query[time_field] = {"$gte": min_time, "$lte": max_time}
+        query[time_field] = {"$gte": min_time, "$lte": max_time}
         try:
-            main_db_entries = list(collection.find(query, {"_id": False}).sort(time_field, 1))
-            if main_db_entries == []:
-                logging.debug(f'No entries for this time frame')
-                return {"main_entries": [], "min_date": "error", "max_date": "error"}
-            min_date_main_db = main_db_entries[0][time_field]
-            max_date_main_db = main_db_entries[-1][time_field]
-            return_dict = {"main_entries": main_db_entries, "min_date": min_date_main_db, "max_date": max_date_main_db}
-            return return_dict
+            return_list = list(collection.find(query, {"_id": False}).sort(time_field, 1))
+            if return_list == []:
+                logging.debug(f'No entries for this time frame for collection {collection_name}')
+            else:
+                #Add the recovery value to a new source field
+                for item in return_list:
+                    item["source"] = "recovery"
         except Exception as e:
             self.reconnect()
             logging.error(f'Issue with getting records in time range', exc_info=True)
-            return {"main_entries": [], "min_date": "error", "max_date": "error"}
+        return return_list
 
+    def get_message_type_from_collection(self, collection_name): 
+        """
+        Take in a collection name and get a mapped message
+        type back 
+        """
+        address_name = self.collection_address_mapping.get(collection_name, None)
+        address_config = self.all_addresses.get(address_name, {})
+        message_type = address_config.get("message_type", None)
+        return message_type 
+
+    def post_recovery_data_message(self, msg_content, recovery_data):
+        try:
+            message = msg_content.copy()
+            message_type = "recovery_data"
+            message["id"] = system_object.system.return_system_id()
+            message["entity"] = "mongodb"
+            message["time"] = util.get_today_date_time_utc()
+            message["recovery_data"] = recovery_data.copy()
+            enveloped_message = system_object.system.envelope_message_by_type(restored_connection_message, message_type)
+                system_object.system.post_messages_by_type(enveloped_message, message_type)
+        except Exception as e:
+            logging.error(f"Could not post recovery data message from mongodb; {e}", exc_info=True)
     
+    def fetch_recovery_data(self, message_type=None, entry_ids=[]):
+        """      
+        This function receives the message type given by the
+        on_message trigger as well as the entry id of the 
+        message. This function picks up the appropriate message 
+        It then posts a fetched recovery data message to the system
+        NOTE: This function is a little bit ugly and could possibly
+        be improved in the future 
+        """
+        try:
+            recovery_data = {} 
+            messages = system_object.system.pickup_messages_by_message_type(message_type=message_type, entry_ids=entry_ids)
+            for single_message in messages:
+                #For each message, get the lost and restored connection time
+                msg_content = single_message.get("msg_content", {})
+                lost_connection_time = msg_content.get("lost_connection_time", False)
+                restored_connection_time = msg_content.get("restored_connection_time", False)
+                #Get the data from the database 
+                all_collections = list(self.collection_address_mapping.keys())
+                for single_collection in all_collections:
+                    try:
+                        #Get the recovery data 
+                        message_type = self.collection_message_mapping[single_collection]
+                        entries = get_all_records_in_time_range(lost_connection_time, restored_connection_time, message_type, single_collection)
+                        #If the recovery data ain't empty, add it 
+                        if entries != []:
+                            recovery_data[message_type] = entries
+                    except Exception as e:
+                        logging.error(f"Could not get recovery entries for {collection_name}; {e}", exc_info=True)
+                #If we actually have some recovery data 
+                if recovery_data != {}:
+                    self.post_recovery_data_message(msg_content, recovery_data)
+        except Exception as e:
+            logging.error(f"MongoDB could not fetch recovery data {e}"; exc_info=True)
+
+
+    def handle_recovery_data_message(self, message_type=None, entry_ids=[]):
+        """      
+        This function receives the message type given by the
+        on_message trigger as well as the entry id of the 
+        message. This function picks up the appropriate message 
+        It then adds the recovery data it needs as appropriate 
+        Possibly after checking for duplicates - TBD (Need to ask)
+        """
+        try:
+            messages = system_object.system.pickup_messages_by_message_type(message_type=message_type, entry_ids=entry_ids)
+            for single_message in messages:
+                #For each message, get the lost and restored connection time
+                msg_content = single_message.get("msg_content", {})
+                lost_connection_time = msg_content.get("lost_connection_time", False)
+                restored_connection_time = msg_content.get("restored_connection_time", False)
+                recovery_data = msg_content.get("recovery_data", {})
+                #For each message type and list of entries we recovered
+                for message_type, entry_list in recovery_data.items():
+                    try:
+                        #Get the collection mapped from the message_type
+                        relevant_collections = self.message_collection_mapping.get(message_type, [])
+                        for collection_name in relevant_collections:
+                            #Possibly eliminate duplicates from the message?
+                            #self.eliminate_duplicates(collection_name, message_type, entry_list)
+                            #Insert the new records to the right collection        
+                            self.insert_records(entry_list, collection_name)
+                    except Exception as e:
+                        logging.error(f"Could not insert recovery data for {message_type}; {e}", exc_info=True)
+
+        except Exception as e:
+            logging.error(f"Could not handle recovery data message in mongo; {e}", exc_info=True)
+
     ######### -------------------- Updater Stuff -------------------------------- ####### 
     def get_configuration(self, config_folder, config_name, config_id): 
         """
@@ -390,14 +497,8 @@ class Mongodb():
         Takes in the address names and the duration
         """
         pass 
-        #These functions should never block - no "always"
-        #duration defined for this driver (makes no sense)
-
-        #Get the addresses 
-
-        #Actually receive does not make a whole lot of sense here
-        #Should not be receiving new messages from a database
-        #So maybe don't define this guy at all? 
+        
+        #Receive not defined for this driver 
 
     def send(self, address_names, duration, entry_ids=[]):
         """
