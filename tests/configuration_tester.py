@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %
 def run_test_configuration(system_config):
     #Init the 
     system_object.system = system_class.return_object(system_config=system_config)
+    system_object.system.init_ecosystem()
     system_object.system.start_scheduler()
     while True:
         time.sleep(15)

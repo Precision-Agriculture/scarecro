@@ -61,6 +61,7 @@ class MQTT_Client():
         self.sent_entries = {}
         self.loop_forever = False
         self.loop_start=False
+        #self.startup_connection_dealt = False
 
         self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
         #Set up message definitions for looking up messages 
@@ -201,10 +202,42 @@ class MQTT_Client():
     
     
     def post_lost_connection_message(self):
-        pass
+        """
+        Posts a lost connection message from mqtt
+        driver to the system 
+        """
+        try:
+            message_type = "connection_status"
+            lost_connection_message = {
+                "id": "mqtt",
+                "time": util.get_today_date_time_utc(),
+                "connection_status": "disconnect"
+            }
+
+            enveloped_message = system_object.system.envelope_message_by_type(lost_connection_message, message_type)
+            system_object.system.post_messages_by_type(enveloped_message, message_type)
+        except Exception as e:
+            logging.debug(f"Could not post lost connection message from mqtt; {e}", exc_info=True)
+
 
     def post_restored_connection_message(self): 
-        pass 
+        """
+        Posts a restored connection message from mqtt
+        driver to the system 
+        """
+        try:
+            message_type = "connection_status"
+            restored_connection_message = {
+                "id": "mqtt",
+                "time": util.get_today_date_time_utc(),
+                "connection_status": "reconnect"
+            }
+
+            enveloped_message = system_object.system.envelope_message_by_type(restored_connection_message, message_type)
+            system_object.system.post_messages_by_type(enveloped_message, message_type)
+        except Exception as e:
+            logging.debug(f"Could not post restored connection message from mqtt; {e}", exc_info=True)
+
     
     def check_connection_status(self, rc): 
         """
@@ -217,16 +250,30 @@ class MQTT_Client():
         If a previously lost connection was restored, it 
         posts a connection restorted message 
         """
-        if rc == 3:
-            self.num_missed_connections += 1
-            if self.num_missed_connections > 2 and self.alerted_lost_connection = False:
-                self.post_lost_connection_message()
-                self.alerted_lost_connection = True  
-        else:
-            self.num_missed_connections = 0 
-            if self.alerted_lost_connection == False:
-                self.post_restored_connection_message()
-                self.alerted_lost_connection = False
+        try:
+            #If the message didn't send 
+            if rc != 0:
+                self.num_missed_connections += 1
+                if self.num_missed_connections > 2 and self.alerted_lost_connection == False:
+                    logging.debug(f"Generating lost connection from mqtt")
+                    self.alerted_lost_connection = True 
+                    self.post_lost_connection_message()
+            #If it did send, only send a restored connection message 
+            #If we noticed a disconnect earlier, or if the system
+            #itself is disconnected 
+            else:
+                system_connection_lost = system_object.system.return_system_lost_connection()
+                logging.debug(f"Lost System Connection in MQTT {system_connection_lost}")
+                self.num_missed_connections = 0 
+                if self.alerted_lost_connection or system_connection_lost:
+                    logging.debug(f"Generating restored connection from mqtt")
+                    if self.alerted_lost_connection == True:
+                        self.alerted_lost_connection = False
+                    self.post_restored_connection_message()
+                    
+        except Exception as e:
+            logging.error("Could not check system mqtt connection status")
+            
 
     
     def publish(self, topic, message):

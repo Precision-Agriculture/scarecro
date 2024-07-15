@@ -31,7 +31,13 @@ class DataRecovery:
             "status": "reconnect",
             "time": curr_time
         }
-        if not os.path.exists(self.connection_filename):
+        if os.path.exists(self.connection_filename):
+            connection_info = self.get_connection_file()
+            if connection_info.get("status", None) == "disconnect":
+                logging.debug(f"Starting in disconnected state")
+                self.connected = False
+                system_object.system.set_system_lost_connection(True)
+        else:
             with open(self.connection_filepath, 'a+') as opened_file:
                 json.dump(connection_dict, opened_file, indent=4)
 
@@ -45,34 +51,101 @@ class DataRecovery:
         #MQTT picks up - might not need a recovery task after all? 
         pass 
 
+    def get_connection_file(self): 
+        """
+        Function takes no arguments and attempts 
+        To get information stored in connection file 
+        """
+        logging.debug(f"Attempting to open {self.connection_filename}")
+        with open(self.connection_filename, 'r') as opened_file:
+            connection_info = json.load(opened_file)
+        return connection_info
+
+    def write_to_connection_file(self, write_dict): 
+        """
+        Function takes the dictionary to write back into the 
+        connection file, and writes it to the connection file 
+        """
+        logging.debug(f"Writing disconnect to {self.connection_filename}")
+        with open(self.connection_filename, 'w') as opened_file:
+            json.dump(write_dict, opened_file, indent=4)
+
+    def generate_connection_file_dict(self, status, message):
+        """
+        Takes connect/disconnect status and the message 
+        And uses info to generate what should be written
+        to the persistent connection file 
+        """
+        curr_time = util.get_today_date_time_utc()
+        connection_dict = {
+            "status": status,
+            "time": message.get("time", curr_time)
+        }
+        return connection_dict.copy()
+
     def handle_disconnect(self, message):
         """
         If the system is disconnected, write it 
         to a file if it's not already disconnected. 
         """
-        curr_time = util.get_today_date_time_utc()
-        connection_dict = {
-            "status": "disconnect",
-            "time": message.get("time", curr_time)
-        }
+        system_object.system.set_system_lost_connection(True)
+        connection_dict = self.generate_connection_file_dict("disconnect", message)
         if self.connected:
             self.connected = False
         try:
             connection_info = {}
-            logging.debug(f"Attempting to open {self.connection_filename}")
-            with open(self.connection_filename, 'r') as opened_file:
-                connection_info = json.load(opened_file)
+            connection_info = self.get_connection_file()
             status = connection_info.get("status")
             
             if status != "disconnect":
                 logging.debug(f"Writing disconnect to {self.connection_filename}")
-                with open(self.connection_filename, 'w') as opened_file:
-                    json.dump(connection_dict, opened_file, indent=4)
+                self.write_to_connection_file(connection_dict)
         except Exception as e:
-            logging.error(f"Issue opening connection file {e}", exc_info=True)
+            logging.error(f"Issue opening connection file on disconnect {e}", exc_info=True)
+
+
+    def recovery_data_request(self, lost_connection_dict, restored_connection_dict):
+        """
+        Sends a request for system recovery data based on the 
+        time of lost connection and time of restored connection 
+        """
+        system_object.system.set_system_lost_connection(False)
+        try:
+            lost_connection_time = lost_connection_dict.get("time", None)
+            restored_connection_time = restored_connection_dict.get("time", None)
+            message_type = "recovery_data_request"
+            recovery_data_request_message = {
+                "id": system_object.system.return_system_id(),
+                "time": util.get_today_date_time_utc(),
+                "lost_connection_time": lost_connection_time,
+                "restored_connection_time": restored_connection_time
+            }
+            enveloped_message = system_object.system.envelope_message_by_type(recovery_data_request_message, message_type)
+            system_object.system.post_messages_by_type(enveloped_message, message_type)
+        except Exception as e:
+            logging.error(f"Could not post request for recovery data; {e}", exc_info=True)
+
 
     def handle_reconnect(self, message): 
-        pass 
+        """
+        If the system is reconnected, write it 
+        to a file if it's not already reconnected. 
+        """
+        connection_dict = self.generate_connection_file_dict("reconnect", message)
+        if self.connected:
+            self.connected = False
+        try:
+            connection_info = {}
+            connection_info = self.get_connection_file()
+            status = connection_info.get("status")
+            if status != "reconnect":
+                self.write_to_connection_file(connection_dict)
+                self.recovery_data_request(connection_info, connection_dict)
+        except Exception as e:
+            logging.error(f"Issue opening connection file on reconnect {e}", exc_info=True)
+ 
+        #Send recovery data message 
+
 
     def handle_connection_message(self, message_type=None, entry_ids=[]): 
         """

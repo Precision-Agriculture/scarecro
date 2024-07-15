@@ -36,6 +36,7 @@ system_config = {
 
 #Init the 
 system_object.system = system_class.return_object(system_config=system_config)
+system_object.system.init_ecosystem()
 system_object.system.start_scheduler()
 #Print system update variable 
 print("Before disconnect message sent")

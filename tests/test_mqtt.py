@@ -20,6 +20,7 @@ system_config = {
 }
 system_object.system = system_class.return_object(system_config=system_config)
 #Print the configurations 
+system_object.system.init_ecosystem()
 
 system_object.system.print_configs(["addresses", "messages", "carriers", "handlers"])
 

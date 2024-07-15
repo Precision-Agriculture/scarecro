@@ -33,10 +33,10 @@ class System:
         """
         Take in an optional system config (for testing)
         And initializes the system 
-
         """
-        #Vairables 
+        #Variables 
         self.system_updated = False
+        #Need to check this on permanent store? 
         self.system_lost_connection = False
         self.system_config = {}
         #Get the system config 
@@ -49,6 +49,9 @@ class System:
         #Get the post office info - addresses, carriers, 
         #handlers, and messages 
         self.system_id = self.system_config.get("id", "default")
+
+
+    def init_ecosystem(self):
         self.init_post_office_configs() 
         #Create the system message table 
         self.create_message_table()
@@ -62,30 +65,27 @@ class System:
         #handlers or carriers that already exist 
         for task_name in self.tasks:
             self.init_task(task_name)
-
-        updater = system_config.get("updater", None)
+        #Handle the updater 
+        updater = self.system_config.get("updater", None)
         if updater:
             updater_config = self.import_config("updater", updater)
             self.updater = updater_config
         else:
             self.updater = {}
-
         #Init the scheduler 
         self.init_scheduler()
-
         #If debug, do some prints
         if logging.root.level <= logging.DEBUG: 
             logging.debug("System Configurations")
             self.print_configs(["addresses", "messages", "carriers", "handlers", "tasks"])
             self.print_scheduler_dict()
             self.print_on_message_routing_dict()
+
         
     def return_system_updated(self):
-        #Maybe read this from a file? 
         return self.system_updated
 
     def return_system_lost_connection(self):
-        #Maybe read this from a file?
         return self.system_lost_connection
     
     def set_system_updated(self, value):
