@@ -561,9 +561,12 @@ class System:
                 #We were able to add at least one message 
                 result = True
                 logging.debug(f"Checking message triggers")
-                self.check_message_triggers(message_type, entry_ids=entry_ids)
+                try:
+                    self.check_message_triggers(message_type, entry_ids=entry_ids)
+                except Exception as e:
+                    logging.error(f"Could not check message triggers on {message_type}; {e}", exc_info=True)
         except Exception as e:
-            logging.error(f"Could not post message on address {address_name}", exc_info=True)
+            logging.error(f"Could not post message on address {address_name}; {e}", exc_info=True)
 
         if logging.root.level <= logging.DEBUG: 
             self.print_message_entries_dict()
@@ -596,9 +599,13 @@ class System:
                 #We were able to add at least one message 
                 result = True
                 logging.debug(f"Checking message triggers")
-                self.check_message_triggers(message_type, entry_ids=entry_ids)
+                try:
+                    self.check_message_triggers(message_type, entry_ids=entry_ids)
+                except Exception as e:
+                    logging.error(f"Could not check message triggers on message {message_type}; {e}", exc_info=True)
+
         except Exception as e:
-            logging.error(f"Could not post message of type {message_type}", exc_info=True)
+            logging.error(f"Could not post message of type {message_type}; {e}", exc_info=True)
 
         if logging.root.level <= logging.DEBUG: 
             self.print_message_entries_dict()
@@ -753,20 +760,23 @@ class System:
         Prints all messages entries. Passing in one or a list
         of message types restrics the entries to just those types 
         """
-        if message_types == "all":
-            print_dict = self.message_entries
-        elif isinstances(message_types, list):
-            print_dict = {} 
-            for sub_type in message_types:
-                print_dict[sub_type] = self.message_entries.get(sub_type, {})
-        else:
-            print_dict = {
-                sub_type: self.message_entries[sub_type]
-            }
-        print("---------Message Table Entries--------------")
-        for message_type in print_dict.keys():
-            print(message_type)
-            print(json.dumps(print_dict[message_type].get("messages", {}), indent=4))
+        try:
+            if message_types == "all":
+                print_dict = self.message_entries
+            elif isinstances(message_types, list):
+                print_dict = {} 
+                for sub_type in message_types:
+                    print_dict[sub_type] = self.message_entries.get(sub_type, {})
+            else:
+                print_dict = {
+                    sub_type: self.message_entries[sub_type]
+                }
+            print("---------Message Table Entries--------------")
+            for message_type in print_dict.keys():
+                print(message_type)
+                print(json.dumps(print_dict[message_type].get("messages", {}), indent=4))
+        except Exception as e:
+            logging.error(f"Could not print message entries dict; {e}", exc_info=True)
 
     def create_message_dict_entry(self):
         """

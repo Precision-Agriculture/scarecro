@@ -96,19 +96,22 @@ class MQTT_Client():
         #Need to change so it can handle nested topics!!
         #MARKED 
         #Get the topic
-        topic_name = message.topic
-        #Debug for now
-        logging.debug(f"Got message {json.loads(message.payload)} on topic {message.topic}")
-        #Map it to an address
-        address_name = self.check_topic_map(topic_name)
-        message_body = json.loads(message.payload)
-        logging.debug(f"Received Message {topic_name} {message_body} {address_name}")
-        if self.include_topic:
-            message_body["topic"] = topic_name
-        if address_name:
-            #Envelope and post it
-            enveloped_message = system_object.system.envelope_message(message_body, address_name)
-            system_object.system.post_messages(enveloped_message, address_name)
+        try:
+            topic_name = message.topic
+            #Debug for now
+            logging.debug(f"Got message {json.loads(message.payload)} on topic {message.topic}")
+            #Map it to an address
+            address_name = self.check_topic_map(topic_name)
+            message_body = json.loads(message.payload)
+            logging.debug(f"Received Message {topic_name} {message_body} {address_name}")
+            if self.include_topic:
+                message_body["topic"] = topic_name
+            if address_name:
+                #Envelope and post it
+                enveloped_message = system_object.system.envelope_message(message_body, address_name)
+                system_object.system.post_messages(enveloped_message, address_name)
+        except Exception as e:
+            logging.error(f"Could not receive message {message}; {e}", exc_info=True)
 
     def get_subscriptions(self, addresses):
         """
@@ -232,7 +235,6 @@ class MQTT_Client():
                 "time": util.get_today_date_time_utc(),
                 "connection_status": "reconnect"
             }
-
             enveloped_message = system_object.system.envelope_message_by_type(restored_connection_message, message_type)
             system_object.system.post_messages_by_type(enveloped_message, message_type)
         except Exception as e:

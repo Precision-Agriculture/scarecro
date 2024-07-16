@@ -427,11 +427,12 @@ class Mongodb():
                     try:
                         #Get the collection mapped from the message_type
                         relevant_collections = self.message_collection_mapping.get(message_type, [])
+                        logging.debug(f"Going to recover data for collections {relevant_collections}")
                         for collection_name in relevant_collections:
                             #Possibly eliminate duplicates from the message?
                             #self.eliminate_duplicates(collection_name, message_type, entry_list)
                             #Insert the new records to the right collection        
-                            self.insert_records(entry_list, collection_name)
+                            self.insert_records(copy.deepcopy(entry_list), collection_name)
                     except Exception as e:
                         logging.error(f"Could not insert recovery data for {message_type}; {e}", exc_info=True)
 
