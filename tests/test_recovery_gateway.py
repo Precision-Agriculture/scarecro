@@ -33,7 +33,7 @@ system_config = {
     "addresses": [
         #To gather some data 
         "gateway_stats_in",
-        "bmp280_in",
+        #"bmp280_in",
         #To send the data immediately - so can track
         "cloud_mqtt_send_immediate",
         #So we can locally store the data 
