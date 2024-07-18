@@ -19,20 +19,31 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %
 #It collected while it was out of connection 
 
 #It needs to have all these things happen to pass its test 
+#Situations
+#Start with power - lose power - regain power
+#Start without power - regain power
+#Start without power - reboot - start without power - regain power
+#Start without power - reboot - start with power
+#Start with power - reboot - start without power - regain power 
 
 
 
 system_config = {
     "id": "test_device",
     "addresses": [
+        #To gather some data 
         "gateway_stats_in",
         "bmp280_in",
+        #To send the data immediately - so can track
         "cloud_mqtt_send_immediate",
+        #So we can locally store the data 
         "mongo_local_immediate"
 
     ],
     "tasks":[
+        #For detecting the connection change
         "handle_connection_change",
+        #For recoverying the data 
         "handle_request_for_recovery_data"
     ],
     #"updater": "updater"
