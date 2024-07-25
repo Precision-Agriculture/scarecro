@@ -134,8 +134,8 @@ class Tempest_UDP():
                             data_json = json.loads(data)
 
                             observations = self.process_data(data_json)
-                            self.logger.info(f"Tempest message {observations}")
                             if observations != {}:
+                                self.logger.info(f"Tempest message {observations}")
                                 self.envelope_and_post_message(observations, address_names)
                 except socket.error:
                     self.logger.error("Socket error occured! Reinitializing socket!")
@@ -165,28 +165,28 @@ class Tempest_UDP():
             #this will be temptest observation messages
             #adds values to OBS_ST_MAP
             observations = dict(zip(OBS_ST_MAP, data['obs'][0]))
-            observations['Datetime'] = time_string
-            observations['device_id'] = data['serial_number']
-
-        if data['type'] == 'rapid_wind':
-            #this will be rapid wind messages
-            #adds values to RAPID_WIND_MAP
-            observations = dict(zip(RAPID_WIND_MAP, data['ob']))
-            observations['Datetime'] = time_string
-            observations['device_id'] = data['serial_number']
-
-        if data['type'] == 'evt_strike':
-            #this will be lightning strike messages
-            #adds values to EVT_STRIKE_MAP
-            observations = dict(zip(EVT_STRIKE_MAP, data['evt']))
-            observations['Datetime'] = time_string
+            observations['time'] = time_string
             observations['id'] = data['serial_number']
 
-        if data['type'] == 'evt_precip':
-            #this will be precipitation messages
-            time_stamp = time_string
-            device_id = data['serial_number']
-            self.logger.info(f'It started raining near device {device_id} at {time_stamp}!')
+        # if data['type'] == 'rapid_wind':
+        #     #this will be rapid wind messages
+        #     #adds values to RAPID_WIND_MAP
+        #     observations = dict(zip(RAPID_WIND_MAP, data['ob']))
+        #     observations['time'] = time_string
+        #     observations['id'] = data['serial_number']
+
+        # if data['type'] == 'evt_strike':
+        #     #this will be lightning strike messages
+        #     #adds values to EVT_STRIKE_MAP
+        #     observations = dict(zip(EVT_STRIKE_MAP, data['evt']))
+        #     observations['time'] = time_string
+        #     observations['id'] = data['serial_number']
+
+        # if data['type'] == 'evt_precip':
+        #     #this will be precipitation messages
+        #     time_stamp = time_string
+        #     device_id = data['serial_number']
+        #     self.logger.info(f'It started raining near device {device_id} at {time_stamp}!')
         else:
             #this will be the hub status messages
             self.logger.debug(data)
