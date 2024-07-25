@@ -22,10 +22,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %
 #Situations
 #Start with power - lose power - regain power
 #Start without power - regain power
-#Start without power - reboot - start without power - regain power
+#Start without power - reboot - start without power - regain power - PASS
 #Start without power - reboot - start with power
 #Start with power - reboot - start without power - regain power 
-
+#Tests with multiple message types
+#Test with multiple gateways 
 
 
 system_config = {

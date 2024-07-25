@@ -7,8 +7,7 @@ import select
 import time
 import logging
 import json
-import pytz
-from datetime import datetime
+import datetime
 from multiprocessing import Process
 
 sys.path.append("../scarecro")
@@ -21,24 +20,24 @@ import system_object
 # provides a structured way to interpret and display the different types of weather data such as wind
 # speed, temperature, pressure, humidity, and other environmental parameters.
 OBS_ST_MAP = [
-    'Time',                        # ('Time Epoch', 'Seconds'),
-    'Wind Lull Speed',             # ('Wind Lull (minimum 3 second sample)', 'm/s'),
-    'Average Wind Speed',          # ('Wind Avg (average over report interval)', 'm/s'),
-    'Wind Gust Speed',             # ('Wind Gust (maximum 3 second sample)', 'm/s'),
-    'Wind Direction',              # ('Wind Direction', 'Degrees'),
-    'Wind Sample Interval',        # ('Wind Sample Interval', 'seconds'),
-    'Station Pressure',            # ('Station Pressure', 'MB'),
-    'Air Temperature',             # ('Air Temperature', 'C'),
-    'Relative Humidity',           # ('Relative Humidity', '%'),
-    'Illuminance',                 # ('Illuminance', 'Lux'),
-    'UV Index',                    # ('UV', 'Index'),
-    'Solar Radiation',             # ('Solar Radiation', 'W/m^2'),
-    'Precipitation Accumulated',   # ('Precip Accumulated', 'mm'),
-    'Precipitation Type',          # ('Precipitation Type', '0 = none, 1 = rain, 2 = hail'),
-    'Lightning Strike Avg Distance', # ('Lightning Strike Avg Distance', 'km'),
-    'Lightning Strike Count',      # ('Lightning Strike Count', ''),
-    'Battery',                     # ('Battery', 'Volts'),
-    'Report Interval'              # ('Report Interval', 'Minutes')
+    ('Time Epoch', 'Seconds'),
+    ('Wind Lull (minimum 3 second sample)', 'm/s'),
+    ('Wind Avg (average over report interval)', 'm/s'),
+    ('Wind Gust (maximum 3 second sample)', 'm/s'),
+    ('Wind Direction', 'Degrees'),
+    ('Wind Sample Interval', 'seconds'),
+    ('Station Pressure', 'MB'),
+    ('Air Temperature', 'C'),
+    ('Relative Humidity', '%'),
+    ('Illuminance', 'Lux'),
+    ('UV', 'Index'),
+    ('Solar Radiation', 'W/m^2'),
+    ('Precip Accumulated', 'mm'),
+    ('Precipitation Type', '0 = none, 1 = rain, 2 = hail'),
+    ('Lightning Strike Avg Distance', 'km'),
+    ('Lightning Strike Count', ''),
+    ('Battery', 'Volts'),
+    ('Report Interval', 'Minutes')
 ]
 
 # The `RAPID_WIND_MAP` is a mapping that defines the structure of the data fields for the 'rapid_wind'
@@ -46,9 +45,9 @@ OBS_ST_MAP = [
 # the first element is the name of the observation field and the second element is the unit of
 # measurement for that field.
 RAPID_WIND_MAP = [
-    'Time',           # ('Time Epoch', 'Seconds'),
-    'Wind Speed',     # ('Wind Speed', 'm/s'),
-    'Wind Direction'  # ('Wind Direction', 'Degrees')
+    ('Time Epoch', 'Seconds'),
+    ('Wind Speed', 'm/s'),
+    ('Wind Direction', 'Degrees')
 ]
 
 # The `EVT_STRIKE_MAP` is a mapping that defines the structure of the data fields for the 'evt_strike'
@@ -59,9 +58,9 @@ RAPID_WIND_MAP = [
 # mapping provides a structured way to interpret and handle the lightning strike observation data
 # received from the WeatherFlow HUB.
 EVT_STRIKE_MAP = [
-    'Time',       # ('Time Epoch', 'Seconds'),
-    'Distance',   # ('Distance', 'km'),
-    'Energy'      # ('Energy', '')
+    ('Time Epoch', 'Seconds'),
+    ('Distance', 'km'),
+    ('Energy', '')
 ]
 
 class Tempest_UDP():
@@ -140,9 +139,6 @@ class Tempest_UDP():
                 except socket.error:
                     self.logger.error("Socket error occured! Reinitializing socket!")
                     self.socket_error_handler()
-
-                #sleep keeps the loop from going too fast
-                time.sleep(0.01) 
                             
     def process_data(self, data):
         """
@@ -158,33 +154,30 @@ class Tempest_UDP():
         not match any of the given types then it is a hub status message and it will be logged.
         """
         observations = {} 
-        utc_curr_time = datetime.now(tz=pytz.UTC)
-        time_string = utc_curr_time.strftime('%Y-%m-%dT%H:%M:%S.%f')
-
         if data['type'] == 'obs_st':
             #this will be temptest observation messages
             #adds values to OBS_ST_MAP
             observations = dict(zip(OBS_ST_MAP, data['obs'][0]))
-            observations['Datetime'] = time_string
+            observations['time'] = datetime.datetime.fromtimestamp(observations[('Time Epoch', 'Seconds')])
             observations['device_id'] = data['serial_number']
 
         if data['type'] == 'rapid_wind':
             #this will be rapid wind messages
             #adds values to RAPID_WIND_MAP
             observations = dict(zip(RAPID_WIND_MAP, data['ob']))
-            observations['Datetime'] = time_string
+            observations['Datetime'] = datetime.datetime.fromtimestamp(observations[('Time Epoch', 'Seconds')])
             observations['device_id'] = data['serial_number']
 
         if data['type'] == 'evt_strike':
             #this will be lightning strike messages
             #adds values to EVT_STRIKE_MAP
             observations = dict(zip(EVT_STRIKE_MAP, data['evt']))
-            observations['Datetime'] = time_string
+            observations['Datetime'] = datetime.datetime.fromtimestamp(observations[('Time Epoch', 'Seconds')])
             observations['id'] = data['serial_number']
 
         if data['type'] == 'evt_precip':
             #this will be precipitation messages
-            time_stamp = time_string
+            time_stamp = datetime.datetime.fromtimestamp(data['evt'][0])
             device_id = data['serial_number']
             self.logger.info(f'It started raining near device {device_id} at {time_stamp}!')
         else:
@@ -207,6 +200,8 @@ class Tempest_UDP():
                 enveloped_message = system_object.system.envelope_message(message, address_name)
                 system_object.system.post_messages(enveloped_message, address_name)
                 
+                #sleep keeps the loop from going too fast
+                time.sleep(0.01) 
         except Exception as e:
                 logging.error(f"Issue posting message {e}")
                 #Wait a bit before trying again 
