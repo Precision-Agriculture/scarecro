@@ -47,7 +47,6 @@ class Mongodb():
         Get information from the send and receive addresses 
         To map databases to addresses and vice versa
         """
-        
         self.all_addresses = {**self.send_addresses, **self.receive_addresses}
         collection_address_mapping = {}
         address_collection_mapping = {}
@@ -405,6 +404,105 @@ class Mongodb():
         except Exception as e:
             logging.error(f"MongoDB could not fetch recovery data {e};", exc_info=True)
 
+    def add_to_time(time_string, seconds):
+        #Get datetime objects from time strings
+        time = datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S.%f")
+        #Subtract the two and take the absolute value of the difference in seconds
+        if seconds > 0:
+            final_time = time + timedelta(seconds=seconds)
+        else:
+            final_time = time - timedelta(seconds=abs(seconds))
+        return final_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+    def eliminate_against_main(self, entries, main_db_entries, min_date_main_db, max_date_main_db, time_field, id_field, accept_rate):
+        """
+        This function eliminates duplicate entries between the 
+        recovery data and main database 
+        """
+        # #DEBUG - MARKED - CHANGE 
+        # print("Current entries")
+        # print(entries)
+        # print("Main DB entries")
+        # print(main_db_entries)
+        # new_entries = entries
+        try:
+            exclude_entries = []
+            for entry in entries:
+                curr_time = entry[time_field]
+                #If the main DB pulls are outside the range for this entry:
+                min_main_time_plus_accept_rate = util.add_to_time(min_date_main_db, -accept_rate)
+                max_main_time_plus_accept_rate = util.add_to_time(max_date_main_db, accept_rate)
+                if curr_time < min_main_time_plus_accept_rate or curr_time > max_main_time_plus_accept_rate:
+                    #Then it's not a duplicate; keep going 
+                    continue
+                #DEBUG - MARKED - CHANGE 
+
+                lower_limit = util.add_to_time(curr_time, -accept_rate)
+                upper_limit = util.add_to_time(curr_time, accept_rate)
+                # print("Current time")
+                # print(entry[time_field])
+                # print("Lower and upper limit")
+                # print(lower_limit)
+                # print(upper_limit)
+                #While the main db
+                for main_entry in main_db_entries:
+                    #If they have the same ID
+                    if main_entry[id_field] == entry[id_field]:
+                        #And if the time is within the range - then this entry is a duplicate 
+                        if (main_entry[time_field] > lower_limit and main_entry[time_field] < upper_limit):
+                            #duplicate - pop it off
+                            #MARKED - definitely want to kill before long 
+                            #print(f"Disqualifying entry: {main_entry[time_field]}")
+                            logging.debug(f"Duplicate: Popping off entry: {entry}")
+                            exclude_entries.append(entry)
+                            break
+            new_entries = [x for x in entries if x not in exclude_entries]
+            logging.debug(f"Removed {len(exclude_entries)} entries")
+        except Exception as e:
+            logging.debug(f"Error in filtering process: {e}", exc_info=True)
+        return new_entries
+
+
+    def eliminate_duplicates(self, lost_connection_time, restored_connection_time, collection_name, message_type, entry_list):
+        """ 
+        If a given address is configured with an acceptance rate,
+        This function will eliminate duplicates against the database.
+        If will return only the new messages to accept 
+        """
+        return_list = entry_list
+        try:
+            #See if the 
+            relevant_address = self.collection_address_mapping[collection_name]
+            address_config = self.send_addresses[relevant_address]
+            add_info = address_config.get("additional_info", {})
+            duration = add_info.get("eliminate_duplicates", None)
+            #If there is a collection rate 
+            if not isinstance(duration, (int, float)):
+                logging.debug(f"No need to eliminate duplicates for {message_type}")
+            else:
+                try:
+                    #Get the entries
+                    message_config = self.message_configs.get(message_type, {})
+                    time_field = message_config.get("time_field", "time")
+                    id_field = message_config.get("id_field", "id")
+                    first_entry_time = entry_list[0].get(time_field, lost_connection_time)
+                    last_entry_time = entry_list[-1].get(time_field, restored_connection_time)
+                    start_pull = util.add_to_time(first_entry_time, -duration)
+                    end_pull = util.add_to_time(last_entry_time, duration)
+                    new_entries = self.get_all_records_in_time_range(start_pull, end_pull, message_type, collection_name) 
+                except Exception as e:
+                    logging.debug(f"Couldn't get main database entries for filtering: {e}", exc_info=True)
+                try:
+                    #Filter them against the main database 
+                    filtered_entries = self.eliminate_against_main(entry_list, new_entries, start_pull, end_pull, time_field, id_field, duration)
+                    return_list = filtered_entries
+                except Exception as e:
+                    logging.debug(f"Couldn't filter database and recovery messages for reason {e}", exc_info=True)
+        except Exception as e:
+            logging.debug(f"Couldn't eliminate duplicate messages for reason {e}", exc_info=True)
+        return return_list 
+
 
     def handle_recovery_data_message(self, message_type=None, entry_ids=[]):
         """      
@@ -430,12 +528,17 @@ class Mongodb():
                         logging.debug(f"Going to recover data for collections {relevant_collections}")
                         for collection_name in relevant_collections:
                             #Possibly eliminate duplicates from the message?
-                            #self.eliminate_duplicates(collection_name, message_type, entry_list)
-                            #Insert the new records to the right collection        
-                            self.insert_records(copy.deepcopy(entry_list), collection_name)
+                            #CHANGE is here - MARKED 
+                            try:
+                                new_entry_list = self.eliminate_duplicates(lost_connection_time, restored_connection_time, collection_name, message_type, entry_list)
+                                entry_list = new_entry_list
+                            except Exception as e:
+                                logging.debug(f"Error eliminating duplicates: {e}", exc_info=True)
+                                #Insert the new records to the right collection 
+                            if entry_list != []:       
+                                self.insert_records(copy.deepcopy(entry_list), collection_name)
                     except Exception as e:
                         logging.error(f"Could not insert recovery data for {message_type}; {e}", exc_info=True)
-
         except Exception as e:
             logging.error(f"Could not handle recovery data message in mongo; {e}", exc_info=True)
 

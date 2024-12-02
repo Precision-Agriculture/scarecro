@@ -4,7 +4,7 @@ Addresses should be a dictionary of the following form:
 config = {
     "inheritance": a name of list of other names addresses to inherit from
 
-    "message_type": the type of message this address deals with. If this is a list, the underlying system will break the address into multiple addresses by message type, naming them <address_name>_<message_type>. An address cannot inherit from another address with multuple messages. 
+    "message_type": the type of message this address deals with. If this is a list, the underlying system will break the address into multiple addresses by message type, naming them <address_name>_<message_type>. An address cannot inherit from another address with multiple messages. 
 
     "handler": the name of the handler config for this message before send/after receive. This can be None, if no processing is needed. 
 
@@ -17,7 +17,7 @@ config = {
     "duration": How often the message is sent through the system. This can be:
          "always", if the message is always being sent or recieved, 
           a value in seconds, for how often the message is being sent or received, 
-          "on_message", for a sender that sends every new message coming through, or
+          "on_message", for a sender that sends on every new message coming through, or
           "as_needed", if the send or received is triggered by something else on an as_needed basis 
     }
     

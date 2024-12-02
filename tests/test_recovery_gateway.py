@@ -44,7 +44,7 @@ system_config = {
     "tasks":[
         #For detecting the connection change
         "handle_connection_change",
-        #For recoverying the data 
+        #For recovering the data 
         "handle_request_for_recovery_data"
     ],
     #"updater": "updater"

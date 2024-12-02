@@ -21,7 +21,7 @@ import system_object
 # provides a structured way to interpret and display the different types of weather data such as wind
 # speed, temperature, pressure, humidity, and other environmental parameters.
 OBS_ST_MAP = [
-    'Time',                        # ('Time Epoch', 'Seconds'),
+    'Time_Seconds',                        # ('Time Epoch', 'Seconds'),
     'Wind Lull Speed',             # ('Wind Lull (minimum 3 second sample)', 'm/s'),
     'Average Wind Speed',          # ('Wind Avg (average over report interval)', 'm/s'),
     'Wind Gust Speed',             # ('Wind Gust (maximum 3 second sample)', 'm/s'),
