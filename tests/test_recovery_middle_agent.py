@@ -13,6 +13,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %
 #We need to see if the middle agent receives
 # the recovery data message 
 #And then if it probably routes the recovery data to the database 
+#Test passed if receives messages (minus duplicates) with no floods
+#Note on behavior - will not self-asess for duplicates, 
+#Assumes that filtering has already occurred on a gateway level. 
 
 system_config = {
     "id": "test_device_middle_agent",
