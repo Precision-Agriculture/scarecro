@@ -42,8 +42,6 @@ class BLE():
         self.listening_interval = self.config.get("listening_interval", 60)
         self.create_mappings()
         logging.info("Initialized BLE carrier")
-        self.working_mac = None 
-        self.working_address = None 
 
     def create_mappings(self):
         """
@@ -98,9 +96,6 @@ class BLE():
         if self.read_method == "beacon":
             print("Right before the run scanner function")
             self.run_scanner(address_names, duration)
-        if self.read_method == "write_read": 
-            print("Right before the run_write_reader function")
-            self.run_write_read(address_names, duration)
 
 
     def beacon_callback(self, device, advertising_data):
@@ -142,13 +137,10 @@ class BLE():
                     }
                     print("SEND MESSAGE")
                     print(message)
-                    try:
-                        enveloped_message = system_object.system.envelope_message(message, address_name)
-                        system_object.system.post_messages(enveloped_message, address_name)
+                    enveloped_message = system_object.system.envelope_message(message, address_name)
+                    system_object.system.post_messages(enveloped_message, address_name)
                     #JUST FOR DEBUG - CHANGE
-                        system_object.system.print_message_entries_dict()
-                    except Exception as e:
-                        logging.debug(f"Could not post BLE Beacon message for reason {e}", exc_info=True)
+                    system_object.system.print_message_entries_dict()
                     break 
      
 
@@ -188,90 +180,33 @@ class BLE():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         #loop = asyncio.get_event_loop()
-        logging.debug(f"In Run Scanner function, duration {duration}")
+        print("IN Run Scanner function")
+        print(duration)
         loop.run_until_complete(self.scan_beacons(address_names, duration))
         # if duration != "always":
         #     print("Running this loop once")
         #     loop.run_until_complete(self.scan_beacons(address_names, duration))
 
 
-    def write_read_callback(self, characteristic, data):
-        logging.debug(f"Received data back: {data}")
-        if data:
-            message = {
-                        "mac_address": self.working_mac,
-                        "packet": data 
-                    }
-            try:
-                enveloped_message = system_object.system.envelope_message(message, self.working_address)
-                system_object.system.post_messages(enveloped_message, self.working_address)
-                #JUST FOR DEBUG - CHANGE
-                system_object.system.print_message_entries_dict()
-            except Exception as e:
-                logging.debug(f"Could not post BLE Write Read message for reason {e}", exc_info=True)
- 
-
-    async def query_function(self, mac_address, read_uuid, write_uuid, data_to_write):
-        """
-        Asynchronous function to run to write the appropriate 
-        information and get the response in the callback 
-        """
-        async with BleakClient(mac_address) as client:
-            logging.debug("Connected")
-            await client.start_notify(read_uuid, self.write_read_callback)
-            #Try this when next working on it 
-            response_back = await client.write_gatt_char(write_uuid, data_to_write)
-            #logging.debug(f"Response: {response_back}")
-            await asyncio.sleep(5.0)
-            await client.stop_notify(read_uuid)
-
-    def get_readings_from_write_read(self, address_names):
-        """
-        This function gets the necessary info from the 
-        addresses to run a write-read async loop from each
-        """
-         #For each identified address:
-        for address_name in address_names:
-            #Get the info dict 
-            self.working_address = address_name 
-            info_dict = self.address_info_mapping.get(address_name, {})
-            #Get uuids and info 
-            data_uuid = info_dict.get("data_uuid", None)
-            if isinstance(data_uuid, list):
-                data_uuid = bytes(data_uuid)
-            write_uuid = info_dict.get("write_uuid", None)
-            if isinstance(write_uuid, list):
-                write_uuid = bytes(write_uuid)
-            data_to_write = info_dict.get("data_to_write", None)
-            if isinstance(data_to_write, list):
-                data_to_write = bytes(data_to_write)
-            mac_list = self.address_mac_mapping.get(address_name, [])
-            for mac_address in mac_list:
-                self.working_mac = mac_address
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(self.query_function(mac_address, data_uuid, write_uuid, data_to_write))
-                loop.close()
-        self.working_mac = None
-        self.working_address = None 
+    # def notification_callback(characteristic, data):
+#     print("DATA")
+#     print(data)
+#     new_data = parse_charge_controller_info(data)
+#     print(new_data)
 
 
     def run_write_read(self, address_names, duration):
         """
         This function is called if the read_method property
         of the class is configured as "write_read". 
-
         """
-        logging.debug("In write_read function")
-        if duration != "always":
-            self.get_readings_from_write_read(address_names)
-        else:
-            while True:
-                pass 
-                self.get_readings_from_write_read(address_names)
-                time.sleep(300)
-    
+        pass 
+        #For write and then read, assume we need to connect first
+        #This may make the connection variable obsolute? Or else,
+        #we need to run a scan session first. 
+        #Try to get it up without a scan session first, then keep going. 
+
+
     def send(self, address_names, duration, entry_ids=[]):
         """
         Takes in an optional list of entry ids

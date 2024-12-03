@@ -22,7 +22,6 @@ class BLE():
         self.send_addresses = send_addresses 
         self.receive_addresses = receive_addresses
         self.message_configs = message_configs
-        
 
     def receive(self, address_names, duration):
         """

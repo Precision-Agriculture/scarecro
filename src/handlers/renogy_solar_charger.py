@@ -1,3 +1,11 @@
+import logging 
+import sys 
+sys.path.append("../scarecro")
+import util.util as util 
+
+
+
+
 class RenogyBT:
     """
     This class uses code and functions from Cyril Sebastian's public
@@ -41,23 +49,23 @@ class RenogyBT:
         """
         Function from Cyril Sebastian's Renogy BT Repo 
         """
-            # Reads data from a list of bytes, and converts to an int
-            # Bytes2Int(bs, 3, 2)
-            ret = 0
-            if len(bs) < (offset + length):
-                return ret
-            if length > 0:
-                # offset = 11, length = 2 => 11 - 12
-                byteorder='big'
-                start = offset
-                end = offset + length
-            else:
-                # offset = 11, length = -2 => 10 - 11
-                byteorder='little'
-                start = offset + length + 1
-                end = offset + 1
-            # Easier to read than the bitshifting below
-            return int.from_bytes(bs[start:end], byteorder=byteorder)
+        # Reads data from a list of bytes, and converts to an int
+        # Bytes2Int(bs, 3, 2)
+        ret = 0
+        if len(bs) < (offset + length):
+            return ret
+        if length > 0:
+            # offset = 11, length = 2 => 11 - 12
+            byteorder='big'
+            start = offset
+            end = offset + length
+        else:
+            # offset = 11, length = -2 => 10 - 11
+            byteorder='little'
+            start = offset + length + 1
+            end = offset + 1
+        # Easier to read than the bitshifting below
+        return int.from_bytes(bs[start:end], byteorder=byteorder)
 
 
     def parse_temperature(self, raw_value):
@@ -68,7 +76,7 @@ class RenogyBT:
         return -(raw_value - 128) if sign == 1 else raw_value
 
 
-    def parse_charge_controller_info(self, bs):
+    def parse_charge_controller_info(self, message):
         """
         Function from Cyril Sebastian's Renogy BT Repo 
         """
@@ -87,7 +95,7 @@ class RenogyBT:
         data['pv_voltage'] = self.Bytes2Int(bs, 17, 2) * 0.1
         data['pv_current'] = self.Bytes2Int(bs, 19, 2) * 0.01
         data['pv_power'] = self.Bytes2Int(bs, 21, 2)
-        data['max_charging_power_today'] = Bytes2Int(bs, 33, 2)
+        data['max_charging_power_today'] = self.Bytes2Int(bs, 33, 2)
         data['max_discharging_power_today'] = self.Bytes2Int(bs, 35, 2)
         data['charging_amp_hours_today'] = self.Bytes2Int(bs, 37, 2)
         data['discharging_amp_hours_today'] = self.Bytes2Int(bs, 39, 2)
@@ -113,17 +121,6 @@ class RenogyBT:
             message["msg_id"] = new_message.get("deviceid", "default")
         return messages 
         
-    # def process_out(self, message_type, messages):
-    #     """
-    #     This function takes in a message_type and a list of messages
-    #     It returns a list of messages 
-    #     """
-    #     for message in messages:
-    #         sub_message = message.get("msg_content", {})
-    #         sub_message["processed_by_fake_message_handler_out"] = True
-    #     return messages 
-        
-
 
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return RenogyBT(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)

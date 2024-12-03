@@ -187,6 +187,7 @@ async def main():
         await client.start_notify(read_uuid, notification_callback)
         #Try this when next working on it 
         response_back = await client.write_gatt_char(try_write_uuid, data_in_bytes)
+        print("Response")
         print(response_back)
         await asyncio.sleep(5.0)
         await client.stop_notify(read_uuid)
