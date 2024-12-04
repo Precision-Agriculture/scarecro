@@ -39,7 +39,7 @@ class BLE():
         self.message_configs = message_configs
         #Necessary methods for the BLE program 
         self.read_method = self.config.get("read_method", None)
-        self.listening_interval = self.config.get("listening_interval", 60)
+        self.listening_interval = self.config.get("listening_interval", 30)
         self.create_mappings()
         logging.info("Initialized BLE carrier")
         self.working_mac = None 
@@ -94,12 +94,11 @@ class BLE():
         up to 'receive' messages and post them
         to the system post office along with an address 
         """
-        print("In receive function")
         if self.read_method == "beacon":
-            print("Right before the run scanner function")
+            logging.debug("Beacon mode")
             self.run_scanner(address_names, duration)
         if self.read_method == "write_read": 
-            print("Right before the run_write_reader function")
+            logging.debug("Write Read Mode")
             self.run_write_read(address_names, duration)
 
 
@@ -109,7 +108,7 @@ class BLE():
         Takes in the device and the advertising data 
         Posts the message if applicable 
         """
-        print("In Beacon Callback")
+        logging.debug("In Beacon Callback")
         name = device.name   
         address = device.address
         rssi = device.rssi 
@@ -117,15 +116,12 @@ class BLE():
         true_packet = False
         #If if it has a data_uuid we are looking for 
         #Might want to configure address-dynamic self matches? Kills reusability a bit
-        print(self.matches)
-        print(service_data_dict.keys())
         for match in self.matches:
             if match not in list(service_data_dict.keys()):
                 continue 
             packet = service_data_dict.get(match, None)
             if packet: 
-                print("Found a matching packet!")
-                print(match)
+                logging.debug(f"Found a matching packet!")
                 #Get the address this refers to 
                 address_name = self.match_address_mapping.get(match, None)
                 mac_addresses = self.address_mac_mapping.get(address_name, None)
@@ -140,13 +136,9 @@ class BLE():
                         "rssi": rssi,
                         "packet": packet
                     }
-                    print("SEND MESSAGE")
-                    print(message)
                     try:
                         enveloped_message = system_object.system.envelope_message(message, address_name)
                         system_object.system.post_messages(enveloped_message, address_name)
-                    #JUST FOR DEBUG - CHANGE
-                        system_object.system.print_message_entries_dict()
                     except Exception as e:
                         logging.debug(f"Could not post BLE Beacon message for reason {e}", exc_info=True)
                     break 
@@ -168,13 +160,12 @@ class BLE():
         """
         #Data uuid matches to look up 
         self.matches = self.get_matches(address_names)
-        print("MATCHES")
-        print(self.matches)
+        logging.debug(f"MATCHES: {self.matches}")
         #Create the scanner 
         scanner = BleakScanner(detection_callback=self.beacon_callback, service_uuids=self.matches)
         #Start the scanner 
         await scanner.start()
-        print("Started Scanner")
+        logging.debug("Started Scanner")
         await asyncio.sleep(self.listening_interval)
         if duration != "always":
             await asyncio.sleep(self.listening_interval)
@@ -190,6 +181,7 @@ class BLE():
         #loop = asyncio.get_event_loop()
         logging.debug(f"In Run Scanner function, duration {duration}")
         loop.run_until_complete(self.scan_beacons(address_names, duration))
+        #MARKED - may need to change later 
         # if duration != "always":
         #     print("Running this loop once")
         #     loop.run_until_complete(self.scan_beacons(address_names, duration))
@@ -205,8 +197,6 @@ class BLE():
             try:
                 enveloped_message = system_object.system.envelope_message(message, self.working_address)
                 system_object.system.post_messages(enveloped_message, self.working_address)
-                #JUST FOR DEBUG - CHANGE
-                system_object.system.print_message_entries_dict()
             except Exception as e:
                 logging.debug(f"Could not post BLE Write Read message for reason {e}", exc_info=True)
  
@@ -226,13 +216,13 @@ class BLE():
                 await asyncio.sleep(5.0)
                 await client.stop_notify(read_uuid)
         except Exception as e:
-            logging.debug(f"Issue with Bleak Write Read: {e}")
+            logging.error(f"Issue with Bleak Write Read: {e}")
             try:
-                logging.debug("Attempting to restart bluetooth.")
+                logging.info("Attempting to restart bluetooth.")
                 os.system("rfkill block bluetooth")
                 os.system("rfkill unblock bluetooth")
             except Exception as e:
-                logging.debug(f"Could not bring BT up and down with rfkill: {e}")
+                logging.error(f"Could not bring BT up and down with rfkill: {e}")
 
     def get_readings_from_write_read(self, address_names):
         """
@@ -264,7 +254,7 @@ class BLE():
                     loop.run_until_complete(self.query_function(mac_address, data_uuid, write_uuid, data_to_write))
                     loop.close()
             except Exception as e:
-                logging.debug(f"Could not get BLE write read readings for address {address_name}")
+                logging.error(f"Could not get BLE write read readings for address {address_name}")
         self.working_mac = None
         self.working_address = None 
 
