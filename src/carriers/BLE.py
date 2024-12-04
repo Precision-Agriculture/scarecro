@@ -8,6 +8,7 @@ import system_object
 import util.util as util 
 import asyncio
 from bleak import BleakScanner, BleakClient
+import os 
 
 if logging.root.level > logging.DEBUG:
     logging.getLogger('bleak.backends.bluezdbus.scanner').setLevel(logging.WARNING)
@@ -36,8 +37,7 @@ class BLE():
         self.send_addresses = send_addresses 
         self.receive_addresses = receive_addresses
         self.message_configs = message_configs
-        
-
+        #Necessary methods for the BLE program 
         self.read_method = self.config.get("read_method", None)
         self.listening_interval = self.config.get("listening_interval", 60)
         self.create_mappings()
@@ -216,14 +216,23 @@ class BLE():
         Asynchronous function to run to write the appropriate 
         information and get the response in the callback 
         """
-        async with BleakClient(mac_address) as client:
-            logging.debug("Connected")
-            await client.start_notify(read_uuid, self.write_read_callback)
-            #Try this when next working on it 
-            response_back = await client.write_gatt_char(write_uuid, data_to_write)
-            #logging.debug(f"Response: {response_back}")
-            await asyncio.sleep(5.0)
-            await client.stop_notify(read_uuid)
+        try:
+            async with BleakClient(mac_address) as client:
+                logging.debug("Connected")
+                await client.start_notify(read_uuid, self.write_read_callback)
+                #Try this when next working on it 
+                response_back = await client.write_gatt_char(write_uuid, data_to_write)
+                #logging.debug(f"Response: {response_back}")
+                await asyncio.sleep(5.0)
+                await client.stop_notify(read_uuid)
+        except Exception as e:
+            logging.debug(f"Issue with Bleak Write Read: {e}")
+            try:
+                logging.debug("Attempting to restart bluetooth.")
+                os.system("rfkill block bluetooth")
+                os.system("rfkill unblock bluetooth")
+            except Exception as e:
+                logging.debug(f"Could not bring BT up and down with rfkill: {e}")
 
     def get_readings_from_write_read(self, address_names):
         """
@@ -233,26 +242,29 @@ class BLE():
          #For each identified address:
         for address_name in address_names:
             #Get the info dict 
-            self.working_address = address_name 
-            info_dict = self.address_info_mapping.get(address_name, {})
-            #Get uuids and info 
-            data_uuid = info_dict.get("data_uuid", None)
-            if isinstance(data_uuid, list):
-                data_uuid = bytes(data_uuid)
-            write_uuid = info_dict.get("write_uuid", None)
-            if isinstance(write_uuid, list):
-                write_uuid = bytes(write_uuid)
-            data_to_write = info_dict.get("data_to_write", None)
-            if isinstance(data_to_write, list):
-                data_to_write = bytes(data_to_write)
-            mac_list = self.address_mac_mapping.get(address_name, [])
-            for mac_address in mac_list:
-                self.working_mac = mac_address
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(self.query_function(mac_address, data_uuid, write_uuid, data_to_write))
-                loop.close()
+            try:
+                self.working_address = address_name 
+                info_dict = self.address_info_mapping.get(address_name, {})
+                #Get uuids and info 
+                data_uuid = info_dict.get("data_uuid", None)
+                if isinstance(data_uuid, list):
+                    data_uuid = bytes(data_uuid)
+                write_uuid = info_dict.get("write_uuid", None)
+                if isinstance(write_uuid, list):
+                    write_uuid = bytes(write_uuid)
+                data_to_write = info_dict.get("data_to_write", None)
+                if isinstance(data_to_write, list):
+                    data_to_write = bytes(data_to_write)
+                mac_list = self.address_mac_mapping.get(address_name, [])
+                for mac_address in mac_list:
+                    self.working_mac = mac_address
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop = asyncio.get_event_loop()
+                    loop.run_until_complete(self.query_function(mac_address, data_uuid, write_uuid, data_to_write))
+                    loop.close()
+            except Exception as e:
+                logging.debug(f"Could not get BLE write read readings for address {address_name}")
         self.working_mac = None
         self.working_address = None 
 
@@ -282,51 +294,5 @@ class BLE():
     
 def return_object(config={}, send_addresses={}, receive_addresses={}, message_configs={}):
     return BLE(config=config, send_addresses=send_addresses, receive_addresses=receive_addresses, message_configs=message_configs)
-
-
-
-#if __name__=="__main__":
-
-#     import asyncio
-#     from bleak import BleakScanner
-
-#     async def main():
-#         devices = await BleakScanner.discover()
-#         # for d in devices:
-#         #     print(d)
-
-#         device_dict = BleakScanner.discovered_devices_and_advertisement_data
-#         print(json.dumps(device_dict, default=str))
-#         # BleakScanner.start()
-#         # device_tuple = BleakScanner()
-
-# loop = asyncio.get_event_loop()
-# loop.run_until_complete(main())
-
-
-# async with BleakClient("60:98:66:EA:40:A9") as client:
-#         print(client.address)
-#         print(client.services)
-#         print("Connected")
-
-#         await client.start_notify(read_uuid, notification_callback)
-#         #Try this when next working on it 
-#         response_back = await client.write_gatt_char(try_write_uuid, data_in_bytes)
-#         print(response_back)
-#         await asyncio.sleep(5.0)
-#         await client.stop_notify(read_uuid)
-
-    
-# read_uuid = "0000fff1-0000-1000-8000-00805f9b34fb"
-# try_write_uuid = "0000ffd1-0000-1000-8000-00805f9b34fb"
-# data = [255, 3, 1, 0, 0, 34, 209, 241]
-# data_in_bytes = bytes(data)
-
-
-# def notification_callback(characteristic, data):
-#     print("DATA")
-#     print(data)
-#     new_data = parse_charge_controller_info(data)
-#     print(new_data)
 
 
