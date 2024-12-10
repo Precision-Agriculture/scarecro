@@ -215,9 +215,8 @@ class BLE():
                 #logging.debug(f"Response: {response_back}")
                 await asyncio.sleep(5.0)
                 await client.stop_notify(read_uuid)
-        #Just for testing - MARKED
         except Exception as e:
-            logging.error(f"Issue with Bleak Write Read: {e}", exc_info=True)
+            logging.error(f"Issue with Bleak Write Read: {e}")
             try:
                 logging.info("Attempting to restart bluetooth.")
                 os.system("rfkill block bluetooth")
