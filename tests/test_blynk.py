@@ -3,7 +3,7 @@ system_config = {
     "id": "test_device",
     "addresses": [
         #"renogy_ble_in",
-        #"weather_rack_433_in",
+        "weather_rack_433_in",
         "blynk_out"
     ]
 }

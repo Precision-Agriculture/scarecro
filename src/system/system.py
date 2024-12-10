@@ -941,10 +941,10 @@ class System:
                 logging.debug(f"No messages found for {message_type} ")
         except Exception as e:
             logging.error(f"Could not get messages of {message_type}, {e}", exc_info=True)
-        try:
-            self.release_message_semaphore(message_type)
-        except Exception as e:
-            pass 
+            try:
+                self.release_message_semaphore(message_type)
+            except Exception as e:
+                pass 
         return return_messages_list
     
     ######## Objects #############

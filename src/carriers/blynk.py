@@ -50,7 +50,7 @@ class Blynk():
 
         self.blynk_url = self.config.get("blynk_url", None)
         self.blynk_auth = self.config.get("blynk_auth", None)
-        self.request_start_string = f"{self.blynk_url}{self.blynk_auth}" 
+        self.request_start_string = f"{self.blynk_url}/{self.blynk_auth}" 
         self.timeout_val = self.config.get("timeout", 5)
         self.address_entry_id_dict = {}
         self.switchdoc_image_url = "http://www.switchdoc.com/SkyWeatherNoAlpha.png"
@@ -146,7 +146,8 @@ class Blynk():
             "V31": "status event",
             "V32": "main_terminal",
             "V75": "solar_max_line",
-            "V33": "solar_terminal"
+            "V33": "solar_terminal",
+            "V44": "last_sample_time"
         }
         try:
             put_header={"Content-Type": "application/json"}
@@ -175,7 +176,7 @@ class Blynk():
         And updates the value using the header request
         """
         put_header={"Content-Type": "application/json"}
-        put_body = json.dumps(value)
+        put_body = json.dumps([value])
         update_string = f"{self.request_start_string}/update/{value_id}"
         r = requests.put(update_string, data=put_body, headers=put_header, timeout=self.timeout_val)
         logging.debug(f"blynkEventUpdate:POST:r.status_code: {r.status_code}")
@@ -324,6 +325,7 @@ class Blynk():
                     new_entry_ids.append(entry_id)
                     #Send only if we haven't already sent it
                     if entry_id not in sent_entries:
+                        logging.debug(f" Blynk Picking up messages for {address_name}")
                         content = message.get("msg_content", {})
                         msg_type = message.get("msg_type", None)
                         if msg_type == "weather_rack":
