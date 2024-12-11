@@ -289,7 +289,14 @@ class Blynk():
         """
         self.round_stringify_send(reading, "V40", "BarometricPressureSeaLevel", rounding=2, multiply=self.pressure_coef, units=self.pressure_units)
         self.round_stringify_send(reading, "V41", "BarometricPressureSeaLevel", rounding=2, multiply=self.sea_pressure_coef)
-        logging.debug("Blynk bmp280 Updated")       
+        logging.debug("Blynk bmp280 Updated")     
+
+    def disconnect(self):
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect Blynk: No actions needed for Blynk disconnect in this driver.")  
 
     def receive(self, address_names, duration):
         """

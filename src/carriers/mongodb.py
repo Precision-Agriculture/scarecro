@@ -95,6 +95,7 @@ class Mongodb():
             return_val = True
         except Exception as e:
             logging.error(f"Could not disconnect database", exc_info=True)
+        logging.info("Mongodb disconnected")
         return return_val
 
     def reconnect(self):

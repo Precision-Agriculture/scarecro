@@ -315,6 +315,13 @@ class I2C():
         except Exception as e:
             logging.error(f"Issue processing readings for i2c device {e}")
 
+    def disconnect(self): 
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect i2c: No actions needed for Camera i2c in this driver.") 
+
 
     def receive(self, address_names, duration):
         """

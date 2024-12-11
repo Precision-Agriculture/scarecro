@@ -115,6 +115,16 @@ class Tempest_UDP():
         self.logger.debug(f'Received message: {data.decode("utf-8")}')
         return data
 
+    def disconnect(self):
+        """
+        Takes no arguments, attempts to disconenct sockers
+        """
+        logging.info("Disconnected Tempest UDP")
+        try:
+            self.kill_process()
+        except Exception as e:
+            logging.error(f"Tempest UDP: Could not kill process: {e}", exc_info=True)
+
     def receive(self, address_names, duration):
         """
         The `receive` function continuously reads data from sockets, passes the data to the process data function, and

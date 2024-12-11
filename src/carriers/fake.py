@@ -97,6 +97,13 @@ class Fake():
         for message in messages:
             print(message)
 
+    def disconnect(self):
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect Fake Carrier: No actions needed for Fake Carrier disconnect in this driver.") 
+
 
     def send(self, address_names, duration, entry_ids=[]):
         #Going to get the message type from the system message table. 

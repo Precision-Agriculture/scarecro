@@ -172,6 +172,13 @@ class Camera():
 
     #Need to add a cleaning picture task 
 
+    def disconnect(self): 
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect Camera: No actions needed for Camera disconnect in this driver.") 
+
     def receive(self, address_names, duration):
         """
         Takes in the address names and the duration

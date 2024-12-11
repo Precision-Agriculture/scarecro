@@ -90,6 +90,13 @@ class UnderlyingSystem():
         except Exception as e:
             logging.error(f"Issue processing readings for underlying system {e}")
 
+    def disconnect(self): 
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect Underlying System: No actions needed for Underlying System disconnect in this driver.") 
+
     def receive(self, address_names, duration):
         """
         Takes in the address names and the duration

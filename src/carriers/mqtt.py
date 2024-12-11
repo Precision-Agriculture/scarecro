@@ -174,6 +174,28 @@ class MQTT_Client():
             logging.error(f'{self.client_id} bad Connection, return code: {reasonCode}') 
 
 
+    #MARKED - may want to make this one function 
+    #Disconnects the client from the broker 
+    def disconnect(self):
+        """
+        Takes no arguments
+        Disconnect the client from the broker 
+        """
+        try:
+            self.client.loop_stop()
+            self.loop_start = False
+            self.loop_forever = False
+        except Exception as e:
+            logging.error(f'{self.client_id} loop stop did not terminate', exc_info=True)
+        #Add try/except here?
+        try:
+            self.client.disconnect()
+        except Exception as e:
+            logging.error(f"{self.client_id} could not disconnect", exc_info=True)
+        logging.info("MQTT disconnected")
+
+
+
     #Disconnects the client from the broker 
     def disconnect_from_broker(self):
         """

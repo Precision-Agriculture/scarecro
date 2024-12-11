@@ -1286,6 +1286,21 @@ class System:
 
     #End system class definition 
 
+    def disconnect_carriers(self): 
+        """
+        Takes no arguments but attempts to disconnect
+        All carriers available
+        """
+        for carrier_name, carrier_dict in self.carriers.items():
+            #MARKED
+            carrier_object = carrier_dict.get("object", None)
+            if carrier_object != None:
+                #Try to disconnect it
+                logging.debug(f"Attempting to disconnect {carrier_name}")
+                try:
+                    carrier_object.disconnect()
+                except Exception as e:
+                    logging.error(f"Could not disconnect carrier {carrier_name}: {e}", exc_info=True)
 
 
 def return_object(system_config=None):

@@ -24,6 +24,14 @@ class Printer():
         self.receive_addresses = receive_addresses
         self.message_configs = message_configs 
         logging.info("Initialized printer carrier")
+
+
+    def disconnect(self): 
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect Printer: No actions needed for Printer disconnect in this driver.") 
         
     def send(self, address_names, duration, entry_ids=[]):
         """

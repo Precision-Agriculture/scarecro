@@ -258,6 +258,13 @@ class BLE():
         self.working_mac = None
         self.working_address = None 
 
+    def disconnect(self):
+        """
+        In current implementation, function takes no arguments
+        And only prints a message to the console. 
+        """
+        logging.info("Disconnect BLE: No actions needed for BLE disconnect in this driver.")
+
 
     def run_write_read(self, address_names, duration):
         """
