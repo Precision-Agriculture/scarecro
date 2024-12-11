@@ -44,7 +44,7 @@ class SystemMaintenance:
         if self.system_times_without_connection >= self.lost_connection_patience:
             #Send Email Alert message 
             try:
-                alert_message = f"Lost connection reboot {time.strftime("%Y-%m-%d %H:%M:%S")}"
+                alert_message = f'Lost connection reboot {time.strftime("%Y-%m-%d %H:%M:%S")}'
                 self.alert(alert_message)
                 #Reboot 
                 self.reboot() 
