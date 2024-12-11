@@ -5,7 +5,7 @@ system_config = {
     "addresses": [
         "gateway_stats_in", 
         "cloud_mqtt_send_immediate" 
-    ]
+    ],
     "tasks": [
         "check_connection",
     ]
