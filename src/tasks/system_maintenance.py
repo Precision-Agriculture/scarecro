@@ -22,7 +22,7 @@ class SystemMaintenance:
         self.duration = self.config.get("duration", )
         self.alert_emails = self.config.get("alert_emails", None) 
         self.system_id = config.get("system_id", "000")
-        self.lost_connection_patience = self.get("system_lost_connection_patience", 2)
+        self.lost_connection_patience = self.config.get("system_lost_connection_patience", 2)
         logging.info("Initialized a System Maintenance Class") 
         self.system_times_without_connection = 0
         
