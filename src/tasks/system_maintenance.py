@@ -51,7 +51,7 @@ class SystemMaintenance:
             except Exception as e:
                 logging.error(f"System Maintenance: Could not alert and reboot: {e}", exc_info=True)
 
-    def reboot():
+    def reboot(self):
         """
         Function takes no arguments 
         But tries to disconnect 
@@ -66,7 +66,7 @@ class SystemMaintenance:
         #Reboot command 
         os.system("sudo shutdown -r")
 
-    def alert(message):
+    def alert(self, message):
         #MARKED - need to incorporate
         logging.debug(f"Alert message {message}")
         try:
