@@ -8,6 +8,7 @@ system_config = {
     ],
     "tasks": [
         "check_connection",
+        "handle_connection_change", 
     ]
 }
 configuration_tester.run_test_configuration(system_config)

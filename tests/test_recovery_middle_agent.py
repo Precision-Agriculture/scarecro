@@ -22,6 +22,7 @@ system_config = {
     "addresses": [
         "cloud_mqtt_receive",
         "mongo_cloud_immediate",
+        "cloud_mqtt_send_immediate" 
     ],
     "tasks":[
         "handle_recovery_data",
