@@ -76,9 +76,9 @@ class SystemMaintenance:
         except Exception as e:
             logging.error(f"Couldn't write alert to file", exc_info=True)
         try:
-            alert_email = self.alert_email
+            alert_emails = self.alert_emails
             if isinstance(alert_email, list):
-                alert_list = alert_email
+                alert_list = alert_emails
             else:
                 alert_list = [alert_email]
                 
