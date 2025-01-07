@@ -46,7 +46,7 @@ class SystemMaintenance:
             #Send Email Alert message 
             try:
                 alert_message = f'Lost connection reboot {time.strftime("%Y-%m-%d %H:%M:%S")}'
-                if self.reboot_alerted = False:
+                if self.reboot_alerted == False:
                     self.alert(alert_message)
                     self.reboot_alerted = True
                 #Reboot 
