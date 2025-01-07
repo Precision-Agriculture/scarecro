@@ -77,10 +77,10 @@ class SystemMaintenance:
             logging.error(f"Couldn't write alert to file", exc_info=True)
         try:
             alert_emails = self.alert_emails
-            if isinstance(alert_email, list):
+            if isinstance(alert_emails, list):
                 alert_list = alert_emails
             else:
-                alert_list = [alert_email]
+                alert_list = [alert_emails]
                 
             alert_string = f"Alert from {self.system_id}: message"
             for alert_person in alert_list:
