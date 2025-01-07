@@ -25,6 +25,7 @@ class SystemMaintenance:
         self.lost_connection_patience = self.config.get("system_lost_connection_patience", 2)
         logging.info("Initialized a System Maintenance Class") 
         self.system_times_without_connection = 0
+        self.reboot_alerted = False 
         
 
     #Alert via configured email  
@@ -45,7 +46,9 @@ class SystemMaintenance:
             #Send Email Alert message 
             try:
                 alert_message = f'Lost connection reboot {time.strftime("%Y-%m-%d %H:%M:%S")}'
-                self.alert(alert_message)
+                if self.reboot_alerted = False:
+                    self.alert(alert_message)
+                    self.reboot_alerted = True
                 #Reboot 
                 self.reboot() 
             except Exception as e:
