@@ -70,7 +70,7 @@ class SystemMaintenance:
         #MARKED - need to incorporate
         logging.debug(f"Alert message {message}")
         try:
-            f = open("generated_data/alerts.txt", 'x')
+            f = open("generated_data/alerts.txt", 'a+')
             f.write(message+'\n')
             f.close()
         except Exception as e:
