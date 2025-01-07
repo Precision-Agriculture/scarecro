@@ -85,7 +85,7 @@ class SystemMaintenance:
             alert_string = f"Alert from {self.system_id}: message"
             for alert_person in alert_list:
                 logging.info(f"Alerting {alert_person}")
-                exec_string = "mpack -s "+ "\""+alert_string+"\" " + "alerts.txt " + alert_person
+                exec_string = "mpack -s "+ "\""+alert_string+"\" " + "generated_data/alerts.txt " + alert_person
                 os.system(exec_string)
             return True
         except Exception as e:
