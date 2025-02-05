@@ -85,7 +85,7 @@ class SystemMaintenance:
             else:
                 alert_list = [alert_emails]
                 
-            alert_string = f"Alert from {self.system_id}: message"
+            alert_string = f"Alert from {self.system_id}: {message}"
             for alert_person in alert_list:
                 logging.info(f"Alerting {alert_person}")
                 exec_string = "mpack -s "+ "\""+alert_string+"\" " + "generated_data/alerts.txt " + alert_person

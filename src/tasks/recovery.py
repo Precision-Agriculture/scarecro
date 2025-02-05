@@ -133,9 +133,10 @@ class DataRecovery:
         If the system is reconnected, write it 
         to a file if it's not already reconnected. 
         """
+        system_object.system.set_system_lost_connection(False)
         connection_dict = self.generate_connection_file_dict("reconnect", message)
-        if self.connected:
-            self.connected = False
+        if self.connected == False:
+            self.connected = True
         try:
             connection_info = {}
             connection_info = self.get_connection_file()
