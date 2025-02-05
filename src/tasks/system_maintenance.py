@@ -94,7 +94,7 @@ class SystemMaintenance:
         except Exception as e:
             logging.error(f"Could not alert", exc_info=True)
             return False
-      
+    
 
 def return_object(config):
     return SystemMaintenance(config)
