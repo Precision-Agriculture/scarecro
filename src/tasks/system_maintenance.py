@@ -37,11 +37,13 @@ class SystemMaintenance:
         If the system has lost connection mode 
         """ 
         logging.debug("Checking system connection status")
-        system_connection_status = system_object.system.return_system_lost_connection()
-        if system_connection_status == False:
+        system_lost_connection_status = system_object.system.return_system_lost_connection()
+        logging.debug(f"System connection status {system_lost_connection_status}")
+        if system_lost_connection_status == True:
             self.system_times_without_connection += 1
         else:
             self.system_times_without_connection = 0
+        logging.debug(f"System times without connection {self.system_times_without_connection}")
         if self.system_times_without_connection >= self.lost_connection_patience:
             #Send Email Alert message 
             try:
