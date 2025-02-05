@@ -298,6 +298,8 @@ class MQTT_Client():
                 system_connection_lost = system_object.system.return_system_lost_connection()
                 logging.debug(f"Lost System Connection in MQTT {system_connection_lost}")
                 self.num_missed_connections = 0 
+                #If we noticed that we have alerted a lost connection, or 
+                #The system knows it had a lost connection 
                 if self.alerted_lost_connection or system_connection_lost:
                     logging.debug(f"Generating restored connection from mqtt")
                     if self.alerted_lost_connection == True:
