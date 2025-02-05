@@ -38,7 +38,7 @@ class SystemMaintenance:
         """ 
         logging.debug("Checking system connection status")
         system_lost_connection_status = system_object.system.return_system_lost_connection()
-        logging.debug(f"System connection status {system_lost_connection_status}")
+        logging.debug(f"System lost connection status {system_lost_connection_status}")
         if system_lost_connection_status == True:
             self.system_times_without_connection += 1
         else:
