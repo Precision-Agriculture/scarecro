@@ -259,17 +259,6 @@ class Mongodb():
         except Exception as e:
             logging.error(f"MongoDB could not fetch recovery data {e};", exc_info=True)
 
-    def add_to_time(time_string, seconds):
-        #Get datetime objects from time strings
-        time = datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S.%f")
-        #Subtract the two and take the absolute value of the difference in seconds
-        if seconds > 0:
-            final_time = time + timedelta(seconds=seconds)
-        else:
-            final_time = time - timedelta(seconds=abs(seconds))
-        return final_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
-
-
     def eliminate_against_main(self, entries, main_db_entries, min_date_main_db, max_date_main_db, time_field, id_field, accept_rate):
         """
         This function eliminates duplicate entries between the 
@@ -449,9 +438,9 @@ class Mongodb():
                 #Get all the collections from the address 
                 curr_time = util.get_today_date_time_utc()
                 #Get the subtract seconds - 86400 is number of seconds in a day
-                subtract_seconds = 86400*self.retain_days
+                subtract_seconds = -86400*self.retain_days
                 #Delete all records before this datetime 
-                limit_time = self.add_to_time(curr_time, subtract_seconds)
+                limit_time = util.add_to_time(curr_time, subtract_seconds)
                 #Get all the send addresses and attempt to clean 
                 for address_name in self.send_addresses.keys():
                     collection_to_clean = self.address_collection_mapping.get(address_name, False)
