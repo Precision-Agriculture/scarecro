@@ -35,6 +35,7 @@ class Mongodb():
         else:
             self.new_driver = False
         self.persistent_connection = self.config.get("persistent_connection", True)
+        self.retain_days = self.config.get("retain_days", False)
         self.connected = False
         self.sent_entries = {}
         self.map_collections()
@@ -129,51 +130,6 @@ class Mongodb():
             logging.error("Could not get this collection", exc_info=True)
         return return_val
 
-    def build_sub_query(self, query_dict):
-        """
-        Might be able to get rid of this #MARKED 
-        """
-        try:
-            op = query_dict["op"]
-            field = query_dict["field"]
-            value = query_dict["value"]
-            if op == "=" or op == "is":
-                query = {field: value}
-            if op == ">":
-                query = {field: {"$gt": value}}
-            if op == "<":
-                query = {field: {"$lt": value}}
-            if op == ">=":
-                query = {field: {"$gte": value}}
-            if op == "<=":
-                query = {field: {"$lte": value}}
-            #Will have to rethink this one
-            #if op == "in":
-                #query = {field: {"$lte": value}}
-        except Exception as e:
-            logging.error("Could not build query in query function", exc_info=True)
-            query = {}
-            field=""
-        return query, field 
-
-    def build_query(self, query):
-        """
-        Will probably be able to get rid of this - #MARKED
-        """
-        final_query = {}
-        if isinstance(query, list):
-            for query_dict in query:
-                sub_query, field = self.build_sub_query(query_dict)
-                if field in list(final_query.keys()):
-                    final_query[field].update(sub_query[field])
-                else:
-                    final_query[field] = sub_query[field]
-        else:
-            query_dict = query
-            final_query, field = self.build_sub_query(query_dict)
-        return final_query
-   
-
     def insert_records(self, records, data_source_name):
         """
         Takes a list of records, and the data collection 
@@ -182,7 +138,6 @@ class Mongodb():
         """
         collection = self.get_collection(data_source_name) 
         return_val = True
-        
         try:
             if not self.new_driver:
                 collection.insert(records)
@@ -197,77 +152,6 @@ class Mongodb():
             self.reconnect()    
             return_val = False
         return return_val
-        
-    # Right now it only takes one new record, so bear that in mind! 
-    def update_record(self, data_source_name, record_id, record_id_field, new_record):
-        """
-        Update existing record with new information 
-        Provide the new record to update the existing record with
-        Based on a key 
-        Also might be able to get rid of this? 
-        """
-        return_val = False
-        collection = self.get_collection(data_source_name)
-        try:
-            #compound ID
-            if isinstance(record_id_field, list):
-                query = {}
-                for field, id_val in zip(record_id_field, record_id):
-                    query[field] = id_val
-            #Non-compound ID
-            else:
-                query = {record_id_field : record_id}
-            if self.device == "gateway":
-                results = collection.update(query, new_record, upsert=True)
-            else:
-                results = collection.replace_one(query, new_record, upsert=True) 
-            if self.device != "gateway":
-                if results.acknowledged:
-                    return_val= True
-            else:
-                #Bit of an assumption here for gateway, unfortunately. 
-                return_val = True
-        except Exception as e:
-            self.reconnect()
-            logging.error(f'Could not update record', exc_info=True)
-        return return_val 
-
-    def delete_records(self, query, data_source_name, verbose=False):
-        """
-        Delete existing records from the database
-        """
-        collection = self.get_collection(data_source_name) 
-        return_val = True
-        final_query = self.build_query(query)
-        if verbose:
-            print(f"Final query {final_query}")
-        if final_query != {}:
-            try:
-                if self.device == "gateway":
-                    collection.remove(final_query)
-                else:
-                    collection.delete_many(final_query)
-            except Exception as e:
-                self.reconnect()
-                logging.error(f"Could not delete query from database collection", exc_info=True)
-                return_val = False
-        return return_val  
-
-    def check_record_existence(self, record_id, record_id_field, data_source_name):
-        """
-        Check to see if a given record exists in the database
-        """
-        return_val = False
-        collection = self.get_collection(data_source_name) 
-        try:
-            results = list(collection.find({record_id_field: record_id}))
-            logging.debug(f'Resuts from record pull: {results}')
-            if results != []:
-                return_val = True
-        except Exception as e:
-            self.reconnect()
-            logging.error(f'Could not find local record', exc_info=True)
-        return return_val 
 
     def get_record(self, data_source_name, record_id, record_id_field):
         """
@@ -285,40 +169,7 @@ class Mongodb():
             logging.error(f'Could not get local record', exc_info=True)
             return return_val
 
-    def return_query(self, data_source_name, query):
-        return_list = []
-        collection = self.get_collection(data_source_name) 
-        try:
-                results = list(collection.find(query, {"_id": 0}))
-                return results
-        except Exception as e:
-            self.reconnect()
-            logging.error(f"Could not execute database query")
-            return return_list
-
-    def return_records_matching_query(self, query, data_source_name, verbose=False):
-        """
-        Query the database and return matching records
-        """
-        try:
-            final_query = self.build_query(query)
-            if verbose:
-                print(f"Final Query {final_query}")
-            if final_query != {}:
-                try:
-                    results = self.return_query(data_source_name, final_query)
-                    return results
-                except Exception as e:
-                    logging.error(f'Issue executing record query', exc_info=True)
-                    return []
-        except Exception as e:
-            self.reconnect()
-            logging.error(f'Could not get records with query {query}', exc_info=True)
-        return []
-
-
     ###### ---------------------Recovery Stuff-----------------------------#######
- 
     def get_all_records_in_time_range(self, min_time, max_time, message_type, collection_name):
         """
         Gets all the records in a given time range.
@@ -358,6 +209,9 @@ class Mongodb():
         return message_type 
 
     def post_recovery_data_message(self, msg_content, recovery_data):
+        """
+        Post the recovery data message from Mongo driver
+        """
         try:
             message = msg_content.copy()
             message_type = "recovery_data"
@@ -421,12 +275,6 @@ class Mongodb():
         This function eliminates duplicate entries between the 
         recovery data and main database 
         """
-        # #DEBUG - MARKED - CHANGE 
-        # print("Current entries")
-        # print(entries)
-        # print("Main DB entries")
-        # print(main_db_entries)
-        # new_entries = entries
         try:
             exclude_entries = []
             for entry in entries:
@@ -437,24 +285,14 @@ class Mongodb():
                 if curr_time < min_main_time_plus_accept_rate or curr_time > max_main_time_plus_accept_rate:
                     #Then it's not a duplicate; keep going 
                     continue
-                #DEBUG - MARKED - CHANGE 
-
                 lower_limit = util.add_to_time(curr_time, -accept_rate)
                 upper_limit = util.add_to_time(curr_time, accept_rate)
-                # print("Current time")
-                # print(entry[time_field])
-                # print("Lower and upper limit")
-                # print(lower_limit)
-                # print(upper_limit)
-                #While the main db
                 for main_entry in main_db_entries:
                     #If they have the same ID
                     if main_entry[id_field] == entry[id_field]:
                         #And if the time is within the range - then this entry is a duplicate 
                         if (main_entry[time_field] > lower_limit and main_entry[time_field] < upper_limit):
                             #duplicate - pop it off
-                            #MARKED - definitely want to kill before long 
-                            #print(f"Disqualifying entry: {main_entry[time_field]}")
                             logging.debug(f"Duplicate: Popping off entry: {entry}")
                             exclude_entries.append(entry)
                             break
@@ -511,7 +349,8 @@ class Mongodb():
         on_message trigger as well as the entry id of the 
         message. This function picks up the appropriate message 
         It then adds the recovery data it needs as appropriate 
-        Possibly after checking for duplicates - TBD (Need to ask)
+        After checking for duplicates
+        This function is a tad ugly - prime for refactoring 
         """
         try:
             messages = system_object.system.pickup_messages_by_message_type(message_type=message_type, entry_ids=entry_ids)
@@ -596,6 +435,43 @@ class Mongodb():
             except Exception as e:
                 logging.error(f"Could not fetch new configuration for {single_message}; {e}", exc_info=True)
     
+    #################### Tasks Code for Utility #####################################
+    def clean_database(self):
+        """
+        This function deletes all records a configued
+        Number of days old. 
+        """
+        #We will limit this to send addresses 
+        if self.retain_days:
+            try:
+                #Get all the collections from the address 
+                curr_time = util.get_today_date_time_utc()
+                #Get the subtract seconds - 86400 is number of seconds in a day
+                subtract_seconds = 86400*self.retain_days
+                #Delete all records before this datetime 
+                limit_time = self.add_to_time(curr_time, subtract_seconds)
+                #Get all the send addresses and attempt to clean 
+                for address_name in self.send_addresses.keys():
+                    collection_to_clean = self.address_collection_mapping.get(address_name, False)
+                    if collection_to_clean:
+                        msg_type = self.collection_message_mapping.get(collection_to_clean, None)
+                        if msg_type:
+                            #Get the time field
+                            time_field = self.message_configs.get("time_field", "time")
+                            query = {time_field: {"$lt": date}}
+                            collection = self.get_collection(collection_to_clean) 
+                            try:
+                                if self.new_driver:
+                                    collection.delete_many(query)
+                                else:
+                                    collection.remove(query)
+                            except Exception as e:
+                                self.reconnect()
+                                logging.error(f"Could not delete query from database {collection_to_clean}", exc_info=True)
+            except Exception as e:
+                logging.error(f"Could not clean database for reason {e}", exc_info=True)
+            
+
     # Receive and Send Functions 
     def receive(self, address_names, duration):
         """
