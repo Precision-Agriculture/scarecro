@@ -68,9 +68,9 @@ class UnderlyingSystem():
             try:
                 host_address_dict = psutil.net_if_addrs()
                 for hostname, host_dict in host_address_dict.items():
-                    #Get broadcast address (entry index 3) of first snic tuple
-                    broadcast_address = host_dict[0][3]
-                    if ("docker" not in hostname) and (not broadcast_address == None) and (not any(character.isalpha() for character in broadcast_address)):
+                    #Get address (entry index 1) of first snic tuple
+                    broadcast_address = host_dict[0][1]
+                    if ("docker" not in hostname) and (not broadcast_address == None) and (not any(character.isalpha() for character in broadcast_address)) and (broadcast_address != "127.0.0.1"):
                         #print(hostname)
                         #print(broadcast_address)
                         new_dict["ip_addresses"].append(broadcast_address)    
