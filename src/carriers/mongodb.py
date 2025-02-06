@@ -449,7 +449,7 @@ class Mongodb():
                         if msg_type:
                             #Get the time field
                             time_field = self.message_configs.get("time_field", "time")
-                            query = {time_field: {"$lt": date}}
+                            query = {time_field: {"$lt": limit_time}}
                             collection = self.get_collection(collection_to_clean) 
                             try:
                                 if self.new_driver:
