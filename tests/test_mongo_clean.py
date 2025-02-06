@@ -9,6 +9,9 @@ import pymongo
 #Get the system config
 import src.system.system as system_class 
 #Need to come up with several message types and system classes 
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %(message)s')
+
+
 
 gateway_message_old =  {
             "time": "2025-01-04T21:41:02.369307",
@@ -63,11 +66,8 @@ system_object.system = system_class.return_object(system_config=system_config)
 #Print the configurations 
 system_object.system.init_ecosystem()
 system_object.system.print_configs(["tasks", "carriers"])
-
+system_object.system.print_routing_table()
 system_object.system.start_scheduler()
-
-prev = time.time()
-curr = time.time()
 
 
 print("Before messages posted")
@@ -105,7 +105,7 @@ print(results)
 # print(results)
 
 print("Wait for task to run .... ")
-time.sleep(180)
+time.sleep(300)
 
 print("Old Messages -- should be empty")
 results = list(collection.find(search_query_1))
@@ -114,7 +114,7 @@ print(results)
 print("New Messages")
 results = list(collection.find(search_query_2))
 print(len(results))
-print(results)
+#print(results)
 
 time.sleep(2)
 client.close()
