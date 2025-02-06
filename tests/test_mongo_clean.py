@@ -79,7 +79,10 @@ time.sleep(2)
 
 client = pymongo.MongoClient("127.0.0.1:27017")
 #print(client.database_names())
-collection = client.gateway_stats
+
+collection = client.SCARECRO.gateway_stats
+#collection = getattr(getattr(self.client, db_name), db_collection)
+
 search_query_1 = {
     "time": {
         "$gte": "2025-02-05T21:41:02.369307",
