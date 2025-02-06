@@ -8,10 +8,10 @@ import time
 #https://stackoverflow.com/questions/42471475/fastest-way-to-get-system-uptime-in-python-in-linux
 import logging
 import sys 
-
 sys.path.append("../scarecro")
 import system_object
 import util.util as util 
+import socket 
 
 
 class UnderlyingSystem():
@@ -63,6 +63,19 @@ class UnderlyingSystem():
                 new_dict["internal_temp"] = round(tempformatted, 1)
             except Exception as e:
                 logging.error("Could not get internal temp", exc_info=True)
+            #Get active ip addresses assigned to the system
+            new_dict["ip_addresses"] = []
+            try:
+                host_address_dict = psutil.net_if_addrs()
+                for hostname, host_dict in host_address_dict.items():
+                    #Get broadcast address (entry index 3) of first snic tuple
+                    broadcast_address = host_dict[0][3]
+                    if ("docker" not in hostname) and (not broadcast_address == None) and (not any(character.isalpha() for character in broadcast_address)):
+                        #print(hostname)
+                        #print(broadcast_address)
+                        new_dict["ip_addresses"].append(broadcast_address)    
+            except Exception as e:
+                logging.error("Could not get ip addresses", exc_info=True)
             #uptime
             uptime = time.time() - psutil.boot_time()
             new_dict["uptime"] = round(uptime, 2)
