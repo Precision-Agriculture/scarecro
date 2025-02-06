@@ -441,8 +441,10 @@ class Mongodb():
         This function deletes all records a configued
         Number of days old. 
         """
+        logging.debug("Database clean task")
         #We will limit this to send addresses 
         if self.retain_days:
+            logging.debug("Database configured to be cleaned")
             try:
                 #Get all the collections from the address 
                 curr_time = util.get_today_date_time_utc()
