@@ -73,47 +73,46 @@ curr = time.time()
 print("Before messages posted")
 time.sleep(2)
 system_object.system.post_messages_by_type(enveloped_message_old, "gateway_stats")
-time.sleep(2)
+print("After old messages posted")
+time.sleep(4)
 #system_object.system.post_messages_by_type(enveloped_message_new, "gateway_stats")
 #time.sleep(2)
 
 client = pymongo.MongoClient("127.0.0.1:27017")
-#print(client.database_names())
-
 collection = client.SCARECRO.gateway_stats
-#collection = getattr(getattr(self.client, db_name), db_collection)
 
 search_query_1 = {
+    "time": {
+        "$gte": "2025-01-03T21:41:02.369307",
+        "$lte": "2025-01-05T21:41:02.369307",
+    }
+}
+search_query_2 = {
     "time": {
         "$gte": "2025-02-05T21:41:02.369307",
         "$lte": "2025-02-07T21:41:02.369307",
     }
 }
-search_query_2 = {
-    "time": {
-        "$gte": "2025-01-03T21:41:02.369307",
-        "$lte": "2025-01-05T21:41:02.369307",
-    }
-    
-}
+
+
 print("Old Messages")
-results = list(collection.find(search_query_2))
+results = list(collection.find(search_query_1))
 print(len(results))
 print(results)
 # print("New Messages")
-# results = list(collection.find(search_query_1))
+# results = list(collection.find(search_query_2))
 # print(len(results))
 # print(results)
 
 print("Wait for task to run .... ")
-time.sleep(60)
+time.sleep(90)
 
 print("Old Messages -- should be empty")
-results = list(collection.find(search_query_2))
+results = list(collection.find(search_query_1))
 print(len(results))
 print(results)
 # print("New Messages")
-# results = list(collection.find(search_query_1))
+# results = list(collection.find(search_query_2))
 # print(len(results))
 # print(results)
 
