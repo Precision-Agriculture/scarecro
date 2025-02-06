@@ -104,7 +104,7 @@ print(results)
 # print(results)
 
 print("Wait for task to run .... ")
-time.sleep(300)
+time.sleep(90)
 
 print("Old Messages -- should be empty")
 results = list(collection.find(search_query_1))
