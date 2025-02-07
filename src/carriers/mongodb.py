@@ -428,7 +428,8 @@ class Mongodb():
     def clean_database(self):
         """
         This function deletes all records a configued
-        Number of days old. 
+        number of days old.
+        I am not in love with the complexity of this function  
         """
         logging.debug("Database clean task")
         #We will limit this to send addresses 
@@ -456,6 +457,7 @@ class Mongodb():
                                     collection.delete_many(query)
                                 else:
                                     collection.remove(query)
+                                logging.debug("Successfully cleaned database")
                             except Exception as e:
                                 self.reconnect()
                                 logging.error(f"Could not delete query from database {collection_to_clean}", exc_info=True)
