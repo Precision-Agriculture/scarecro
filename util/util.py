@@ -68,7 +68,7 @@ def add_to_time(time_string, seconds):
     return final_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
 def convert_string_to_datetime(time_string):
-    the_time = datetime.strptime(og_time, "%Y-%m-%dT%H:%M:%S.%f")
+    the_time = datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S.%f")
     return the_time 
 
 

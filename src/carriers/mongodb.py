@@ -129,6 +129,18 @@ class Mongodb():
             self.reconnect()
             logging.error("Could not get this collection", exc_info=True)
         return return_val
+    
+    def convert_time_stamp(self, records, data_source_name):
+        try:
+            message_name = self.collection_message_mapping.get(data_source_name, None)
+            message_dict = self.message_configs.get(message_name, {})
+            time_field = message_dict.get("time_field", "time")
+            for record in records:
+                prev_time_string = record[time_field]
+                record[time_field] = util.convert_string_to_datetime(prev_time_string)
+        except Exception as e:
+            logging.error(f"Could not convert timestamp to python datetime {data_source_name}", exc_info=True)
+        return records 
 
     def insert_records(self, records, data_source_name):
         """
@@ -137,6 +149,11 @@ class Mongodb():
         Might need to indicate any mapping's here before insert. 
         """
         collection = self.get_collection(data_source_name) 
+
+        #Handle the time field conversion here - datetime is converted to BSON
+        records = self.convert_time_stamp(records, data_source_name)
+        #End time field conversion 
+
         return_val = True
         try:
             if not self.new_driver:

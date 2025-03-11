@@ -289,6 +289,7 @@ class System:
         Returns: the content tied to the attribute name in the imported file
         """
         content = {}
+        #MARKED - this is where we would change to json! 
         try:
             import_string = f"{path_name}.{module_name}"
             content = getattr(importlib.import_module(import_string, package=None), attribute).copy()
