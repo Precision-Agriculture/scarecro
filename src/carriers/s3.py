@@ -1,4 +1,5 @@
 import sys
+import os 
 import time 
 import logging 
 import json 
@@ -36,6 +37,9 @@ class S3_Bucket():
         self.access_key_id = self.config.get("access_key_id", None)
         self.secret_access_key = self.config.get("secret_access_key", None)
         self.path = self.config.get("path", "")
+        file_path = os.path.abspath(os.getcwd())
+        #MARKED - might be an issue
+        self.base_path = f"{file_path}/generated_data/"
         #System id 
         self.system_id = self.config.get("system_id", "default")
         self.sent_entries = {}
@@ -68,6 +72,31 @@ class S3_Bucket():
             address_sub_path_mapping[address_name] = sub_path
         self.sub_path_address_mapping = sub_path_address_mapping
         self.address_sub_path_mapping = address_sub_path_mapping
+
+    def handle_new_firmware_message(self, message_type=None, entry_ids=[]): 
+        """
+        Get a new firmware message passed in by the 
+        on_message trigger, and take action based on it. 
+        """ 
+        messages = system_object.system.pickup_messages_by_message_type(message_type=message_type, entry_ids=entry_ids)
+        for message in messages: 
+            #Get the content 
+            msg = message.get("msg_content", {})
+            firmware_image_name = msg.get("firmware_image_name", None)
+            cloud_path = msg.get("cloud_path", None)
+            disk_path = msg.get("disk_path", None)
+            if disk_path == None:
+                disk_path = self.
+            #See what kind of connection status and take 
+            #The appropriate action 
+            if connection_status == "disconnect":
+                logging.debug("Disconnect message received")
+                self.handle_disconnect(msg) 
+
+            elif connection_status == "reconnect":
+                logging.debug("Reconnect message received")
+                self.handle_reconnect(msg) 
+
 
     def download_file(self, cloud_path, disk_path):
         """

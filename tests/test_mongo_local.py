@@ -4,6 +4,7 @@ system_config = {
     "id": "test_device",
     "addresses": [
         "gateway_stats_in",
+        "weather_rack_433_in",
         "mongo_local_immediate"
     ]
 }
