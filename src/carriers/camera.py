@@ -188,7 +188,7 @@ class Camera():
 
     def take_libcamera_picture(self, address_name):
         """
-        Takes a pi_hawk_eye picture and generates a reading
+        Takes a libcamera picture and generates a reading
         with the image information 
         """
         new_dict = {}
@@ -202,11 +202,11 @@ class Camera():
             camera_type = "default"
         save_path = f"{self.base_path}/{folder}/"
         try:
-            picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "pi_hawk_eye")
+            picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "libcamera")
             #Generate the reading
             resolution = [1920, 1080] 
             new_dict["image_resolution"] = resolution
-            command = f"libcamera-still –autofocus –width {resolution[0]} –height {resolution[1]} -o {picture_name} --immediate"
+            command = f"libcamera-still –autofocus –width {resolution[0]} –height {resolution[1]} -o {new_dict.get("disk_path", "")} --immediate"
             os.system(command)
         except Exception as e:
             logging.error("Could not take libcamera image", exc_info=True)
