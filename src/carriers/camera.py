@@ -151,7 +151,7 @@ class Camera():
                 #MARKED
                 print("HERE")
                 ret = camera.start_and_capture_file(picture_name)
-                time.sleep(1)
+                time.sleep(3)
                 print(ret)
             #Generate the reading 
             new_dict["image_resolution"] = resolution
