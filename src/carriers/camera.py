@@ -206,7 +206,7 @@ class Camera():
             #Generate the reading
             resolution = [1920, 1080] 
             new_dict["image_resolution"] = resolution
-            command = f"libcamera-still –autofocus –width {resolution[0]} –height {resolution[1]} -o {new_dict.get("disk_path", "")} --immediate"
+            command = f"libcamera-still –autofocus –width {resolution[0]} –height {resolution[1]} -o {new_dict.get('disk_path', '')} --immediate"
             os.system(command)
         except Exception as e:
             logging.error("Could not take libcamera image", exc_info=True)
