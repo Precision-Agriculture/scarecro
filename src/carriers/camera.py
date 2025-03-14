@@ -42,7 +42,7 @@ class Camera():
         #Figure out file stuff 
         file_path = os.path.abspath(os.getcwd())
         #MARKED - might be an issue
-        self.base_path = f"{file_path}/generated_data/"
+        self.base_path = f"{file_path}/generated_data"
         #Create a mapping dictionary from the additional info 
         self.mapping_dict = util.forward_backward_map_additional_info([self.send_addresses, self.receive_addresses])
         self.create_folders()
@@ -116,6 +116,10 @@ class Camera():
         """
         Takes a picamera picture and generates a reading
         with the image information 
+        This is quite messy as it is trying to be able to 
+        choose between the picam1 and picam2 drivers, preferring
+        picam2 on import. Probably should just be configued in 
+        the future 
         """
         new_dict = {}
         logging.info("Taking picamera picture(s)")
