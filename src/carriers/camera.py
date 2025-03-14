@@ -98,8 +98,8 @@ class Camera():
         new_dict = {}
         utc_curr_time = datetime.now(tz=pytz.UTC)
         #MARKED
-        #file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S")
+        file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        #file_date = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S")
         #file_day = datetime.now().strftime("%Y-%m-%d")
         os.makedirs(save_path, exist_ok=True)
         #Save filename as {datetime}_{id}_{camera_type}.jpg 
@@ -148,11 +148,7 @@ class Camera():
             try:
                 camera.capture(picture_name)
             except Exception as e:
-                #MARKED
-                print("HERE")
-                ret = camera.start_and_capture_file(picture_name)
-                time.sleep(3)
-                print(ret)
+                camera.start_and_capture_file(picture_name)
             #Generate the reading 
             new_dict["image_resolution"] = resolution
         except Exception as e:
@@ -189,6 +185,33 @@ class Camera():
             logging.error("Could not take pi_hawk_eye image", exc_info=True)
         return new_dict
 
+
+    def take_libcamera_picture(self, address_name):
+        """
+        Takes a pi_hawk_eye picture and generates a reading
+        with the image information 
+        """
+        new_dict = {}
+        logging.info("Taking libcamera picture(s)")
+        #Get the save path 
+        try:
+            folder = self.mapping_dict["folder"]["address_name"][address_name]
+            camera_type = self.mapping_dict["camera_type"]["address_name"][address_name]
+        except Exception as e:
+            folder = "images"
+            camera_type = "default"
+        save_path = f"{self.base_path}/{folder}/"
+        try:
+            picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "pi_hawk_eye")
+            #Generate the reading
+            resolution = [1920, 1080] 
+            new_dict["image_resolution"] = resolution
+            command = f"libcamera-still –autofocus –width {resolution[0]} –height {resolution[1]} -o {picture_name} --immediate"
+            os.system(command)
+        except Exception as e:
+            logging.error("Could not take libcamera image", exc_info=True)
+        return new_dict
+
     #Need to add a cleaning picture task 
     def disconnect(self): 
         """
@@ -211,6 +234,8 @@ class Camera():
                     reading = self.take_picam_picture(address_name)
                 elif camera_type == "pi_hawk_eye":
                     reading = self.take_pi_hawk_eye_picture(address_name)
+                elif camera_type == "libcamera":
+                    reading = self.take_libcamera_picture(address_name)
                 if reading:
                     reading = self.add_id_to_reading(reading, address_name)
                     logging.info(f"Took picture! Reading {reading}")
