@@ -86,7 +86,7 @@ class S3_Bucket():
             cloud_path = msg.get("cloud_path", None)
             disk_path = msg.get("disk_path", None)
             if disk_path == None:
-                disk_path = self.
+                disk_path = f"{self.base_path}/images/
             #See what kind of connection status and take 
             #The appropriate action 
             if connection_status == "disconnect":
