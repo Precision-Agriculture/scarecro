@@ -148,7 +148,9 @@ class Camera():
             except Exception as e:
                 #MARKED
                 print("HERE")
-                camera.start_and_capture_file(picture_name)
+                ret = camera.start_and_capture_file(picture_name)
+                time.sleep(1)
+                print(ret)
             #Generate the reading 
             new_dict["image_resolution"] = resolution
         except Exception as e:
@@ -157,10 +159,7 @@ class Camera():
             try:
                 camera.close()
             except Exception as e:
-                try:
-                    camera.stop()
-                except Exception as e:
-                    logging.error("picamera close failed", exc_info=True)
+                logging.error("picamera close failed", exc_info=True)
         return new_dict
 
     def take_pi_hawk_eye_picture(self, address_name):
