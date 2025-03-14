@@ -148,7 +148,7 @@ class Camera():
             try:
                 camera.capture(picture_name)
             except Exception as e:
-                camera.start_and_capture_file(picture_name)
+                camera.start_and_capture_file(new_dict.get("disk_path", ""))
             #Generate the reading 
             new_dict["image_resolution"] = resolution
         except Exception as e:
@@ -179,7 +179,7 @@ class Camera():
             picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "pi_hawk_eye")
             #Generate the reading 
             new_dict["image_resolution"] = [4626, 3472]
-            command = f"libcamera-still -t 5000 –autofocus –width 4626 –height 3472 -o {picture_name}"
+            command = f"libcamera-still -t 5000 –autofocus –width 4626 –height 3472 -o {new_dict.get('disk_path', '')}"
             os.system(command)
         except Exception as e:
             logging.error("Could not take pi_hawk_eye image", exc_info=True)
