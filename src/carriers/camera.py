@@ -1,5 +1,12 @@
 import time 
-import picamera
+try:
+    import picamera as picam
+except Exception as e:
+    pass
+try:
+    import picamera2 as picam
+except Exception as e:
+    pass 
 from datetime import datetime, timedelta, tzinfo
 from datetime import timezone
 from datetime import date
@@ -120,7 +127,11 @@ class Camera():
             folder = "images"
             camera_type = "default"
         save_path = f"{self.base_path}/{folder}/"
-        camera = picamera.PiCamera()
+        try:
+            camera = picam.PiCamera()
+        except Exception as e:
+            camera = picam.Picamera2()
+            camera.start()
         camera.exposure_mode = "auto"
         try:
             #Take the picture 
@@ -129,7 +140,10 @@ class Camera():
             # Camera warm-up time
             time.sleep(2)
             picture_name, new_dict = self.generate_picture_name_and_reading(save_path, "picamera")
-            camera.capture(picture_name)
+            try:
+                camera.capture(picture_name)
+            except Exception as e:
+                camera.start_and_capture_file(picture_name)
             #Generate the reading 
             new_dict["image_resolution"] = resolution
         except Exception as e:
@@ -138,7 +152,10 @@ class Camera():
             try:
                 camera.close()
             except Exception as e:
-                logging.error("picamera close failed", exc_info=True)
+                try:
+                    camera.stop()
+                except Exception as e:
+                    logging.error("picamera close failed", exc_info=True)
         return new_dict
 
     def take_pi_hawk_eye_picture(self, address_name):
