@@ -6,7 +6,7 @@ system_config = {
         "s3_upload"
     ],
     "tasks":[
-        "clean_camera_pictures"
+        "clean_camera"
     ]
 }
 configuration_tester.run_test_configuration(system_config)
