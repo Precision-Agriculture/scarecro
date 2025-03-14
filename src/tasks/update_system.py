@@ -1,5 +1,6 @@
 import time 
 import os 
+import json 
 import logging  
 from distutils.dir_util import copy_tree
 from datetime import datetime, timedelta, tzinfo
@@ -48,6 +49,27 @@ class SystemUpdate:
         #TODO: Make sure this directory exists first,
         #And is filled before doing! 
         copy_tree(self.backup_dir, self.config_dir)
+
+
+    #Legacy - for python configs 
+    # def write_to_file(self, config_folder, config_name, config_content):
+    #     """
+    #     Get config folder, name, and content
+    #     And write the file to the configs director 
+    #     """
+    #     return_val = False
+    #     try:
+    #         #Might want to configure 
+    #         full_name = f"{self.config_dir}/{config_folder}/{config_name}.py"
+    #         content_to_write = f"config = {config_content}"
+    #         file_handle = open(full_name, "w")
+    #         file_handle.write(content_to_write)
+    #         file_handle.close()
+    #         logging.debug(f"Wrote {full_name}")
+    #         return_val = True
+    #     except Exception as e:
+    #         logging.error(f"Could not write {config_name} {config_folder} to file; {e}", exc_info=True)
+    #     return return_val
   
 
     def write_to_file(self, config_folder, config_name, config_content):
@@ -58,11 +80,9 @@ class SystemUpdate:
         return_val = False
         try:
             #Might want to configure 
-            full_name = f"{self.config_dir}/{config_folder}/{config_name}.py"
-            content_to_write = f"config = {config_content}"
-            file_handle = open(full_name, "w")
-            file_handle.write(content_to_write)
-            file_handle.close()
+            full_name = f"{self.config_dir}/{config_folder}/{config_name}.json"
+            with open(full_name, "w") as file:
+                json.dump(config_content, file, indent=4)
             logging.debug(f"Wrote {full_name}")
             return_val = True
         except Exception as e:

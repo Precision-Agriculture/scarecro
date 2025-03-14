@@ -12,11 +12,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %
 enveloped_message = {
             "msg_id": 3,
             "msg_time": "now",
-            "msg_type": "connection_status",
+            "msg_type": "remote_config_updated",
             "msg_content": {
                     "id": "mqtt",
                     "time": "now",
-                    "connection_status": "addresses",
+                    "config_folder": "addresses",
                     "config_name": "bmp280_in",
                     "config_id": "bmp280_in_gateway",
                     #"config_id": "bmp280_in_gateway_wrong" 

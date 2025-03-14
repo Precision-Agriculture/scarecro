@@ -282,6 +282,22 @@ class System:
         return content 
 
 
+    #Legacy - when configs were python files 
+    # def get_import_content(self, path_name, module_name, attribute="config"):
+    #     """
+    #     This takes in the path to the the imported, the module name 
+    #     inside the folder path, and the attribute name to import
+    #     Returns: the content tied to the attribute name in the imported file
+    #     """
+    #     content = {}
+    #     #MARKED - this is where we would change to json! 
+    #     try:
+    #         import_string = f"{path_name}.{module_name}"
+    #         content = getattr(importlib.import_module(import_string, package=None), attribute).copy()
+    #     except Exception as e:
+    #         logging.error(f"Could not import module {module_name}", exc_info=True) 
+    #     return content 
+
     def get_import_content(self, path_name, module_name, attribute="config"):
         """
         This takes in the path to the the imported, the module name 
@@ -289,10 +305,13 @@ class System:
         Returns: the content tied to the attribute name in the imported file
         """
         content = {}
-        #MARKED - this is where we would change to json! 
         try:
-            import_string = f"{path_name}.{module_name}"
-            content = getattr(importlib.import_module(import_string, package=None), attribute).copy()
+            file_name = f"{path_name}/{module_name}.json"
+            #Json file read in 
+            with open(file_name) as json_config:
+                content = json.load(json_config)
+                #import_string = f"{path_name}.{module_name}"
+                #content = getattr(importlib.import_module(import_string, package=None), attribute).copy()
         except Exception as e:
             logging.error(f"Could not import module {module_name}", exc_info=True) 
         return content 
@@ -307,7 +326,8 @@ class System:
 
         Returns: The config content 
         """
-        path_name = f"configs.{config_folder}"
+        #path_name = f"configs.{config_folder}"
+        path_name = f"configs/{config_folder}"
         #Get the content
         content = self.get_import_content(path_name, module_name, attribute)
         #Run inheritance and substitution on the content 
@@ -331,7 +351,8 @@ class System:
         Specific import for addresses, since multiple message types
         Can throw off an address import 
         """
-        path_name = f"configs.addresses"
+        #path_name = f"configs.addresses"
+        path_name = f"configs/addresses"
         for address_name in active_addresses:
             #Get the content
             content = self.get_import_content(path_name, address_name)
