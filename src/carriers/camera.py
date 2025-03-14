@@ -135,7 +135,6 @@ class Camera():
             camera = picam.PiCamera()
         except Exception as e:
             camera = picam.Picamera2()
-            camera.start()
         camera.exposure_mode = "auto"
         try:
             #Take the picture 
@@ -147,6 +146,8 @@ class Camera():
             try:
                 camera.capture(picture_name)
             except Exception as e:
+                #MARKED
+                print("HERE")
                 camera.start_and_capture_file(picture_name)
             #Generate the reading 
             new_dict["image_resolution"] = resolution
