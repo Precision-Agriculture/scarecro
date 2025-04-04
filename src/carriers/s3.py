@@ -37,6 +37,7 @@ class S3_Bucket():
         self.access_key_id = self.config.get("access_key_id", None)
         self.secret_access_key = self.config.get("secret_access_key", None)
         self.path = self.config.get("path", "")
+        self.default_cloud_path = self.config.get("default_cloud_path", "")
         file_path = os.path.abspath(os.getcwd())
         #MARKED - might be an issue
         self.base_path = f"{file_path}/generated_data/"
@@ -73,6 +74,44 @@ class S3_Bucket():
         self.sub_path_address_mapping = sub_path_address_mapping
         self.address_sub_path_mapping = address_sub_path_mapping
 
+
+    def send_confirm_receipt_message(self, file_name):
+        """
+        Takes an file name and sends a confirm_receipt message 
+        """
+        try:
+            message_type = "confirm_receipt" 
+            message = {
+                "id": self.system_id,
+                "file_name": file_name,
+                "confirm_receipt": True,
+                "time": util.get_today_date_time_utc()
+            }
+            enveloped_message = system_object.system.envelope_message_by_type(message, message_type)
+            system_object.system.post_messages_by_type(enveloped_message, message_type)
+        except Exception as e:
+            logging.error(f"Could not post confirm receipt message {e}", exc_info=True)
+
+    def update_firmware_config_file(self, image_name, config_path):
+        """
+        This function takes the new firmware image name and 
+        writes it to the appropriate config file 
+        """
+        #Assuming Hardware.Major.Minor.Patch
+        #or Hardware.Major-Range.Minor-Range.Patch-Range
+        #May update later for json file 
+        try:
+            try:
+                directory_list = config_path.split("/")[0:-1]
+                directory_path = "/".join(directory_list)
+                os.makedirs(directory_path, exist_ok=True)
+            except Exception as e:
+                logging.error(f"Could not make directory path from {disk_path}, {e}", exc_info=True)
+            with open(config_path, "w") as f:
+                f.write(image_name)
+        except Exception as e:
+            logging.error(f"Could not write to {config_path}", exc_info=True)
+
     def handle_new_firmware_message(self, message_type=None, entry_ids=[]): 
         """
         Get a new firmware message passed in by the 
@@ -82,21 +121,21 @@ class S3_Bucket():
         for message in messages: 
             #Get the content 
             msg = message.get("msg_content", {})
-            firmware_image_name = msg.get("firmware_image_name", None)
+            firmware_image_name = msg.get("file_name", None)
             cloud_path = msg.get("cloud_path", None)
-            disk_path = msg.get("disk_path", None)
-            if disk_path == None:
-                disk_path = f"{self.base_path}/images/"
-            #See what kind of connection status and take 
-            #The appropriate action 
-            if connection_status == "disconnect":
-                logging.debug("Disconnect message received")
-                self.handle_disconnect(msg) 
-
-            elif connection_status == "reconnect":
-                logging.debug("Reconnect message received")
-                self.handle_reconnect(msg) 
-
+            disk_path = msg.get("disk_path", f"{self.base_path}firmware_images/{firmware_image_name}.bin")
+            config_path = msg.get("config_path", f"{self.base_path}latest_firmware.json")
+            confirm_receipt = msg.get("confirm_receipt", True)
+            #Download the file from the cloud path 
+            if cloud_path:
+                try:
+                    self.download_file(cloud_path, disk_path)
+                    #Update the firmware config txt 
+                    self.update_firmware_config_file(firmware_image_name, config_path)
+                    self.send_confirm_receipt_message(firmware_image_name)
+                except Exception as e:
+                    logging.error(f"Could not download {cloud_path}", exc_info=True)
+            
 
     def download_file(self, cloud_path, disk_path):
         """
@@ -104,9 +143,14 @@ class S3_Bucket():
         And the disk path of the new file
         And downloads the cloud file to the disk 
         """
-        try:
-            #file_name - in bucket
-            #object_name - on disk 
+        try: 
+            #Make the disk path if it does not already exist
+            try:
+                directory_list = disk_path.split("/")[0:-1]
+                directory_path = "/".join(directory_list)
+                os.makedirs(directory_path, exist_ok=True)
+            except Exception as e:
+                logging.error(f"Could not make directory path from {disk_path}, {e}", exc_info=True)
             response = self.s3_client.download_file(self.bucket_name, cloud_path, disk_path)
         except Exception as e:
             logging.error(f"Could not download S3 {cloud_path} to {disk_path} for reason {e}")
