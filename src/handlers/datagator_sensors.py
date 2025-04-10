@@ -193,6 +193,26 @@ class DataGatorSensors:
         logging.debug(f"meter_teros10 reading: {new_dict}")
         return new_dict
 
+    def parse_mij_02_lms(self, message):
+        new_dict = {}
+        try:
+            topic_list = message["topic_list"]
+            new_dict["datagator_id"] = message["MAC"]
+            #It's ID is the ID of the aggregator plus it's depth. 
+            new_dict["id"] = str(message["MAC"])+"_"+str(topic_list[1])
+            #Then the time:
+            utc_curr_time = datetime.now(tz=pytz.UTC)
+            time_string = utc_curr_time.strftime("%Y-%m-%dT%H:%M:%S.%f")
+            new_dict["time"] = time_string
+            #Rest of message came through normally
+            new_dict["VOLTAGE"] = message["VOLTAGE"]
+            new_dict["RADIUS"] = message["RADIUS"]
+            new_dict["DEPTH"] = message["DEPTH"]
+        except Exception as e:
+            logging.error("Could not process mij_02_lms message: ", exc_info=True)
+        logging.debug(f"mij_02_lms dendrometer reading: {new_dict}")
+        return new_dict
+
     def parse_minew_s1(self, message):
         new_dict = {}
         try:
@@ -240,6 +260,8 @@ class DataGatorSensors:
                     new_message = self.parse_minew_s1(sub_message)
                 elif message_type == "meter_teros10": 
                     new_message = self.parse_meter_teros10(sub_message)
+                elif message_type == "mij_02_lms":
+                    new_message = self.parse_mij_02_lms(sub_message)
                 if new_message == {}:
                     #logging.debug(f"Error processing weather rack message")
                     return [] 
