@@ -309,9 +309,10 @@ class I2C():
                 if message_type == "bmp280":
                     reading = self.address_device_mapping[address_name].get_reading()
                     #Add the id 
-                    reading = self.add_id_to_reading(reading, address_name)
-                    enveloped_message = system_object.system.envelope_message(reading, address_name)
-                    system_object.system.post_messages(enveloped_message, address_name)
+                    if reading != {}:
+                        reading = self.add_id_to_reading(reading, address_name)
+                        enveloped_message = system_object.system.envelope_message(reading, address_name)
+                        system_object.system.post_messages(enveloped_message, address_name)
         except Exception as e:
             logging.error(f"Issue processing readings for i2c device {e}")
 
