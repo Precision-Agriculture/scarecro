@@ -386,10 +386,10 @@ For example:
             ],
             "content": {
                 "source": "mqtt",
-                "mqtt_url": "b56765a64ba74fa582ab3cadc77f918a.s2.eu.hivemq.cloud",
-                "mqtt_port": 8883,
-                "mqtt_username": "soacdevice",
-                "mqtt_password": "Mc1nt0sh",
+                "mqtt_url": "some_url",
+                "mqtt_port": 1883,
+                "mqtt_username": "user",
+                "mqtt_password": "1234",
                 "qos": 1,
                 "client_id": "sensor_listener"
             },
